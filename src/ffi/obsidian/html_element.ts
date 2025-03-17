@@ -9,6 +9,14 @@ export function create_el(
   return el.createEl(tag, info)
 }
 
+export function create_el_with_class(
+  el: HTMLElement,
+  tag: keyof HTMLElementTagNameMap,
+  cls: string
+): HTMLElement {
+  return el.createEl(tag, { cls })
+}
+
 export function find(
   el: HTMLElement,
   selector: string

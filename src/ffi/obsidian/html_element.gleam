@@ -11,6 +11,13 @@ pub type Event {
 @external(javascript, "src/ffi/obsidian/html_element.ts", "create_el")
 pub fn create_el(el: HTMLElement, tag: String, info: info) -> HTMLElement
 
+@external(javascript, "src/ffi/obsidian/html_element.ts", "create_el_with_class")
+pub fn create_el_with_class(
+  el: HTMLElement,
+  tag: String,
+  cls: String,
+) -> HTMLElement
+
 @external(javascript, "src/ffi/obsidian/html_element.ts", "find")
 pub fn find(el: HTMLElement, selector: String) -> Result(HTMLElement, Nil)
 

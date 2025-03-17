@@ -3,6 +3,7 @@ import ffi/obsidian/markdown_post_processor_context.{
   type MarkdownPostProcessorContext,
 }
 import ffi/obsidian/vault.{type Vault}
+import ffi/obsidian/view.{type View}
 import ffi/obsidian/workspace.{type Workspace}
 
 pub type Plugin
@@ -18,6 +19,23 @@ pub fn register_dom_event(
   plugin: Plugin,
   ev_type: String,
   callback: fn(HTMLElement, Event) -> Nil,
+) -> Nil
+
+@external(javascript, "src/ffi/obsidian/plugin.ts", "register_view")
+pub fn register_view(
+  plugin: Plugin,
+  view_type: String,
+  get_display_text: fn(View) -> String,
+  on_open: fn(View) -> Nil,
+  on_close: fn(View) -> Nil,
+) -> Nil
+
+@external(javascript, "src/ffi/obsidian/plugin.ts", "add_ribbon_button")
+pub fn add_ribbon_button(
+  plugin: Plugin,
+  icon: String,
+  title: String,
+  callback: fn() -> Nil,
 ) -> Nil
 
 @external(javascript, "src/ffi/obsidian/plugin.ts", "get_vault")
