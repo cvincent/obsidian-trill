@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-task-additions",
+  "name": "Obsidian Task Additions",
+  "version": "0.0.1",
+  "minAppVersion": "0.15.0",
+  "description": "Adds two additional task states, maintains parent/child task relationships, tracks completion and cancellation datetimes, and respects hard line wrapping with two spaces for indentation.",
+  "author": "Chris Vincent",
+  "authorUrl": "https://github.com/cvincent",
+  "isDesktopOnly": false
+}
