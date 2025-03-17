@@ -1,9 +1,9 @@
 {
-  "id": "obsidian-task-additions",
-  "name": "Obsidian Task Additions",
+  "id": "obsidian-trill",
+  "name": "Obsidian Trill",
   "version": "0.0.1",
   "minAppVersion": "0.15.0",
-  "description": "Adds two additional task states, maintains parent/child task relationships, tracks completion and cancellation datetimes, and respects hard line wrapping with two spaces for indentation.",
+  "description": "My personal take on a Kanban view for Obsidian.",
   "author": "Chris Vincent",
   "authorUrl": "https://github.com/cvincent",
   "isDesktopOnly": false

@@ -9,8 +9,4 @@ export default class MyPlugin extends Plugin {
   onunload() {
     // No-op
   }
-
-  setCheckboxAtPathLine(path: string, line: number, new_state: string) {
-    set_checkbox_at_path_line(this, path, line, new_state)
-  }
 }
