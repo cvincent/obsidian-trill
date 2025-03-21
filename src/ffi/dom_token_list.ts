@@ -1,3 +1,3 @@
 export function contains(dtl: any, val: string): boolean {
-  return dtl.contains(val)
+  return dtl.contains(val);
 }

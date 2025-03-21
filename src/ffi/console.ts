@@ -1,3 +1,3 @@
 export function log(obj: any) {
-  console.log(obj)
+  console.log(obj);
 }

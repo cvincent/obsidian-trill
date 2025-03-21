@@ -1,4 +1,5 @@
 import ffi/obsidian/file.{type File}
+import gleam/dynamic.{type Dynamic}
 
 pub type Workspace
 
@@ -25,3 +26,18 @@ pub fn leaf_set_view_state(
 
 @external(javascript, "src/ffi/obsidian/workspace.ts", "reveal_leaf")
 pub fn reveal_leaf(workspace: Workspace, leaf: WorkspaceLeaf) -> Nil
+
+@external(javascript, "src/ffi/obsidian/workspace.ts", "open_link_text")
+pub fn open_link_text(
+  workspace: Workspace,
+  source_path: String,
+  pane_type: String,
+) -> Nil
+
+@external(javascript, "src/ffi/obsidian/workspace.ts", "trigger_hover_link")
+pub fn trigger_hover_link(
+  workspace: Workspace,
+  event: Dynamic,
+  view_name: String,
+  source_path: String,
+) -> Nil

@@ -4,7 +4,7 @@
   "description": "This is a sample plugin for Obsidian (https://obsidian.md)",
   "main": "main.js",
   "scripts": {
-    "build": "gleam build && tsc -noEmit -skipLibCheck -outDir . && node esbuild.config.mjs production"
+    "build": "gleam build && tsc -noEmit -skipLibCheck -outDir . && node esbuild.config.mjs production && npx @tailwindcss/cli -i ./main.css -o ./styles.css"
   },
   "keywords": [],
   "author": "",
@@ -18,5 +18,9 @@
     "obsidian": "latest",
     "tslib": "2.4.0",
     "typescript": "4.7.4"
+  },
+  "dependencies": {
+    "@tailwindcss/cli": "^4.0.14",
+    "tailwindcss": "^4.0.14"
   }
 }
