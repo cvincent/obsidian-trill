@@ -35,8 +35,15 @@ pub type Model {
   )
 }
 
+const null_status = "none"
+
 pub const statuses = [
-  "none", "inbox", "ideas", "needs-research", "ready", "done",
+  null_status,
+  "inbox",
+  "ideas",
+  "needs-research",
+  "ready",
+  "done",
 ]
 
 pub fn init(plugin) -> #(Model, Effect(Msg)) {
@@ -51,10 +58,10 @@ pub fn init(plugin) -> #(Model, Effect(Msg)) {
     board.new_board(
       group_keys: statuses,
       cards: pages,
-      group_key_fn: fn(page) { result.unwrap(page.status, "none") },
+      group_key_fn: fn(page) { result.unwrap(page.status, null_status) },
       update_group_key_fn: fn(page, new_status) {
         let status = case new_status {
-          "none" -> Error(Nil)
+          s if s == null_status -> Error(Nil)
           s -> Ok(s)
         }
         Page(..page, status:)
