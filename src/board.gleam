@@ -194,7 +194,7 @@ pub fn drop(board: Board(group, inner)) {
       })
     })
 
-  Board(..board, groups:, dragging: None)
+  #(Board(..board, groups:, dragging: None), new_gk)
 }
 
 fn gk_and_group_cards(board: Board(group, inner), card: inner) {

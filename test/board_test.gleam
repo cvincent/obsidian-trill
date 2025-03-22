@@ -161,7 +161,10 @@ pub fn drop_test() {
   |> board.start_dragging(2)
   |> board.drag_over(5, False)
   |> board.drop()
-  |> then(fn(board) { board.groups })
+  |> then(fn(ret) {
+    let #(board, _) = ret
+    board.groups
+  })
   |> should.equal(
     dict.from_list([
       #("inbox", [Card(4), Card(2), Card(5), Card(1)]),
@@ -174,7 +177,10 @@ pub fn drop_test() {
   |> board.start_dragging(2)
   |> board.drag_over(3, True)
   |> board.drop()
-  |> then(fn(board) { board.groups })
+  |> then(fn(ret) {
+    let #(board, _) = ret
+    board.groups
+  })
   |> should.equal(
     dict.from_list([
       #("inbox", [Card(4), Card(5), Card(1)]),
@@ -187,7 +193,10 @@ pub fn drop_test() {
   |> board.start_dragging(5)
   |> board.drag_over(4, True)
   |> board.drop()
-  |> then(fn(board) { board.groups })
+  |> then(fn(ret) {
+    let #(board, _) = ret
+    board.groups
+  })
   |> should.equal(
     dict.from_list([
       #("inbox", [Card(4), Card(5), Card(1)]),
@@ -203,12 +212,19 @@ pub fn drag_over_column_test() {
     |> board.start_dragging(1)
     |> board.drag_over(2, False)
     |> board.drop()
+    |> then(fn(ret) {
+      let #(board, _) = ret
+      board
+    })
 
   board
   |> board.start_dragging(2)
   |> board.drag_over_column("inbox")
   |> board.drop()
-  |> then(fn(board) { board.groups })
+  |> then(fn(ret) {
+    let #(board, _) = ret
+    board.groups
+  })
   |> should.equal(
     dict.from_list([
       #("inbox", [Card(2)]),

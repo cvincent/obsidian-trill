@@ -14,7 +14,7 @@ export function pages(query: string): List<Page> {
         return {
           title: p.title || p.file.path,
           path: p.file.path,
-          status: p.status ? new Ok(p.status) : new Error(null),
+          status: p.status ? new Ok(p.status) : new Error("none"),
         };
       }),
   );

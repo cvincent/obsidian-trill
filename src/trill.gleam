@@ -1,6 +1,8 @@
 import board.{type Board, type Card, Card}
 import ffi/dataview.{type Page, Page}
+import ffi/obsidian/file_manager.{type FileManager}
 import ffi/obsidian/plugin.{type Plugin}
+import ffi/obsidian/vault.{type Vault}
 import ffi/obsidian/workspace.{type Workspace}
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
@@ -8,6 +10,7 @@ import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import lustre.{type App}
 import lustre/attribute
@@ -28,7 +31,9 @@ pub fn app() -> App(Plugin, Model, Msg) {
 
 pub type Model {
   Model(
+    file_manager: FileManager,
     plugin: Plugin,
+    vault: Vault,
     workspace: Workspace,
     query: String,
     board: Board(String, Page),
@@ -61,7 +66,7 @@ pub fn init(plugin) -> #(Model, Effect(Msg)) {
       group_key_fn: fn(page) { result.unwrap(page.status, null_status) },
       update_group_key_fn: fn(page, new_status) {
         let status = case new_status {
-          s if s == null_status -> Error(Nil)
+          s if s == null_status -> Error(null_status)
           s -> Ok(s)
         }
         Page(..page, status:)
@@ -70,7 +75,9 @@ pub fn init(plugin) -> #(Model, Effect(Msg)) {
 
   let model =
     Model(
+      file_manager: plugin.get_file_manager(plugin),
       plugin: plugin,
+      vault: plugin.get_vault(plugin),
       workspace: plugin.get_workspace(plugin),
       query: query,
       board: board,
@@ -114,7 +121,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserStoppedDraggingCard(_event) -> {
-      #(Model(..model, board: board.drop(model.board)), effect.none())
+      let assert Some(Card(page)) = model.board.dragging
+      let #(board, new_status) = board.drop(model.board)
+
+      let effect = case new_status == board.group_key_fn(page) {
+        True -> effect.none()
+        False ->
+          effect.from(fn(_) {
+            case vault.get_file_by_path(model.vault, page.path) {
+              Error(_) -> Nil
+              Ok(file) ->
+                file_manager.process_front_matter(
+                  model.file_manager,
+                  file,
+                  fn(yaml) { [#("status", new_status)] },
+                )
+            }
+            Nil
+          })
+      }
+
+      #(Model(..model, board: board), effect)
     }
 
     UserDraggedCardOverTarget(event, over_card) -> {
