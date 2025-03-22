@@ -13,10 +13,10 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import lustre.{type App}
-import lustre/attribute
+import lustre/attribute as attr
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html
+import lustre/element/html as h
 import lustre/event
 import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
@@ -186,8 +186,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div(
-    [attribute.class("flex h-full")],
+  h.div(
+    [attr.class("flex h-full")],
     list.map(model.board.group_keys, fn(status) {
       let assert Ok(cards) = dict.get(model.board.groups, status)
       let column_droppable = case list.length(cards) {
@@ -197,17 +197,14 @@ pub fn view(model: Model) -> Element(Msg) {
             Ok(UserDraggedCardOverColumn(event, status))
           })
 
-        _ -> attribute.none()
+        _ -> attr.none()
       }
 
-      html.div(
-        [
-          attribute.class("min-w-80 max-w-80 mr-4 height-full"),
-          column_droppable,
-        ],
+      h.div(
+        [attr.class("min-w-80 max-w-80 mr-4 height-full"), column_droppable],
         {
           list.append(
-            [html.div([attribute.class("mb-2")], [html.text(status)])],
+            [h.div([attr.class("mb-2")], [h.text(status)])],
             list.map(cards, fn(card) {
               let page = card.inner
 
@@ -223,15 +220,13 @@ pub fn view(model: Model) -> Element(Msg) {
                     Ok(UserDraggedCardOverTarget(event, card))
                   })
 
-                _ -> attribute.none()
+                _ -> attr.none()
               }
 
-              html.div(
+              h.div(
                 [
-                  attribute.class(
-                    "bg-(--background-secondary) mb-2 p-4 rounded-md",
-                  ),
-                  attribute.attribute("draggable", "true"),
+                  attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
+                  attr.attribute("draggable", "true"),
                   event.on("dragstart", fn(event) {
                     Ok(UserStartedDraggingCard(event, card))
                   }),
@@ -241,29 +236,29 @@ pub fn view(model: Model) -> Element(Msg) {
                   dragover,
                 ],
                 [
-                  html.a(
+                  h.a(
                     [
-                      attribute.class("internal-link"),
-                      attribute.class(invisible),
-                      attribute.href(page.path),
+                      attr.class("internal-link"),
+                      attr.class(invisible),
+                      attr.href(page.path),
                       event.on_click(UserClickedInternalLink(page.path)),
                       event.on("mouseover", fn(event) {
                         Ok(UserHoveredInternalLink(event, page.path))
                       }),
                     ],
-                    [html.text(page.title)],
+                    [h.text(page.title)],
                   ),
-                  html.div([attribute.class(invisible)], [html.text(page.path)]),
-                  html.div([attribute.class(invisible)], [
-                    html.text(result.unwrap(page.status, null_status)),
+                  h.div([attr.class(invisible)], [h.text(page.path)]),
+                  h.div([attr.class(invisible)], [
+                    h.text(result.unwrap(page.status, null_status)),
                   ]),
                 ],
               )
             })
               |> list.append([
-                html.div(
+                h.div(
                   [
-                    attribute.class("h-full"),
+                    attr.class("h-full"),
                     event.on("dragover", fn(event) {
                       let assert Ok(event) = pevent.cast_event(event)
                       Ok(UserDraggedCardOverColumn(event, status))
