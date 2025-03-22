@@ -53,7 +53,11 @@ pub fn init(plugin) -> #(Model, Effect(Msg)) {
       cards: pages,
       group_key_fn: fn(page) { result.unwrap(page.status, "none") },
       update_group_key_fn: fn(page, new_status) {
-        Page(..page, status: Ok(new_status))
+        let status = case new_status {
+          "none" -> Error(Nil)
+          s -> Ok(s)
+        }
+        Page(..page, status:)
       },
     )
 
