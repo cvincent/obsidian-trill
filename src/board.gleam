@@ -174,7 +174,6 @@ pub fn drop(board: Board(group, inner)) {
       })
     })
 
-  let has_target = result.is_ok(target)
   let assert Ok(new_gk) = result.or(target, Ok(board.group_key_fn(dragging)))
   let dragging = board.update_group_key_fn(dragging, new_gk)
 
@@ -185,9 +184,9 @@ pub fn drop(board: Board(group, inner)) {
         case card {
           TargetPlaceholder(_) -> [Card(dragging)]
           SourcePlaceholder(_) -> {
-            case has_target {
-              True -> []
-              False -> [Card(dragging)]
+            case target {
+              Ok(_) -> []
+              Error(_) -> [Card(dragging)]
             }
           }
           any -> [any]
