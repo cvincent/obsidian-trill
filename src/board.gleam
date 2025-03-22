@@ -94,33 +94,7 @@ pub fn drag_over(board: Board(group, inner), over: inner, after: Bool) {
     })
 
   let over_gk = board.group_key_fn(over)
-  let assert Ok(group_cards) = dict.get(groups, over_gk)
-
-  let source_and_target_adjacent =
-    group_cards
-    |> list.window_by_2()
-    |> list.any(fn(window) {
-      case window {
-        #(TargetPlaceholder(_), SourcePlaceholder(_)) -> True
-        #(SourcePlaceholder(_), TargetPlaceholder(_)) -> True
-        _ -> False
-      }
-    })
-
-  let groups = case source_and_target_adjacent {
-    False -> groups
-    True ->
-      dict.insert(
-        groups,
-        over_gk,
-        list.filter(group_cards, fn(card) {
-          case card {
-            TargetPlaceholder(_) -> False
-            _ -> True
-          }
-        }),
-      )
-  }
+  let groups = remove_target_when_adjacent_to_source(groups, over_gk)
 
   Board(..board, groups:)
 }
@@ -140,12 +114,47 @@ pub fn drag_over_column(board: Board(group, inner), col_gk: group) {
         })
 
       case gk == col_gk {
-        True -> [TargetPlaceholder(dragging), ..group_cards]
+        True -> list.append(group_cards, [TargetPlaceholder(dragging)])
         False -> group_cards
       }
     })
 
+  let groups = remove_target_when_adjacent_to_source(groups, col_gk)
+
   Board(..board, groups:)
+}
+
+fn remove_target_when_adjacent_to_source(
+  groups: Dict(group, List(Card(inner))),
+  group: group,
+) {
+  let assert Ok(group_cards) = dict.get(groups, group)
+
+  let source_and_target_adjacent =
+    group_cards
+    |> list.window_by_2()
+    |> list.any(fn(window) {
+      case window {
+        #(TargetPlaceholder(_), SourcePlaceholder(_)) -> True
+        #(SourcePlaceholder(_), TargetPlaceholder(_)) -> True
+        _ -> False
+      }
+    })
+
+  case source_and_target_adjacent {
+    False -> groups
+    True ->
+      dict.insert(
+        groups,
+        group,
+        list.filter(group_cards, fn(card) {
+          case card {
+            TargetPlaceholder(_) -> False
+            _ -> True
+          }
+        }),
+      )
+  }
 }
 
 pub fn drop(board: Board(group, inner)) {

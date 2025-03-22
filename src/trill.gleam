@@ -144,7 +144,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 pub fn view(model: Model) -> Element(Msg) {
   html.div(
-    [attribute.class("flex")],
+    [attribute.class("flex h-full")],
     list.map(model.board.group_keys, fn(status) {
       let assert Ok(cards) = dict.get(model.board.groups, status)
       let column_droppable = case list.length(cards) {
@@ -157,63 +157,81 @@ pub fn view(model: Model) -> Element(Msg) {
         _ -> attribute.none()
       }
 
-      html.div([attribute.class("min-w-80 max-w-80 mr-4"), column_droppable], {
-        list.append(
-          [html.div([attribute.class("mb-2")], [html.text(status)])],
-          list.map(cards, fn(card) {
-            let page = board.unwrap_card(card)
+      html.div(
+        [
+          attribute.class("min-w-80 max-w-80 mr-4 height-full"),
+          column_droppable,
+        ],
+        {
+          list.append(
+            [html.div([attribute.class("mb-2")], [html.text(status)])],
+            list.map(cards, fn(card) {
+              let page = board.unwrap_card(card)
 
-            let invisible = case card {
-              Card(_) -> ""
-              _ -> "invisible"
-            }
+              let invisible = case card {
+                Card(_) -> ""
+                _ -> "invisible"
+              }
 
-            let dragover = case card {
-              Card(_) ->
-                event.on("dragover", fn(event) {
-                  let assert Ok(event) = pevent.cast_event(event)
-                  Ok(UserDraggedCardOverTarget(event, card))
-                })
+              let dragover = case card {
+                Card(_) ->
+                  event.on("dragover", fn(event) {
+                    let assert Ok(event) = pevent.cast_event(event)
+                    Ok(UserDraggedCardOverTarget(event, card))
+                  })
 
-              _ -> attribute.none()
-            }
+                _ -> attribute.none()
+              }
 
-            html.div(
-              [
-                attribute.class(
-                  "bg-(--background-secondary) mb-2 p-4 rounded-md",
-                ),
-                attribute.attribute("draggable", "true"),
-                event.on("dragstart", fn(event) {
-                  Ok(UserStartedDraggingCard(event, card))
-                }),
-                event.on("dragend", fn(event) {
-                  Ok(UserStoppedDraggingCard(event))
-                }),
-                dragover,
-              ],
-              [
-                html.a(
+              html.div(
+                [
+                  attribute.class(
+                    "bg-(--background-secondary) mb-2 p-4 rounded-md",
+                  ),
+                  attribute.attribute("draggable", "true"),
+                  event.on("dragstart", fn(event) {
+                    Ok(UserStartedDraggingCard(event, card))
+                  }),
+                  event.on("dragend", fn(event) {
+                    Ok(UserStoppedDraggingCard(event))
+                  }),
+                  dragover,
+                ],
+                [
+                  html.a(
+                    [
+                      attribute.class("internal-link"),
+                      attribute.class(invisible),
+                      attribute.href(page.path),
+                      event.on_click(UserClickedInternalLink(page.path)),
+                      event.on("mouseover", fn(event) {
+                        Ok(UserHoveredInternalLink(event, page.path))
+                      }),
+                    ],
+                    [html.text(page.title)],
+                  ),
+                  html.div([attribute.class(invisible)], [html.text(page.path)]),
+                  html.div([attribute.class(invisible)], [
+                    html.text(result.unwrap(page.status, "none")),
+                  ]),
+                ],
+              )
+            })
+              |> list.append([
+                html.div(
                   [
-                    attribute.class("internal-link"),
-                    attribute.class(invisible),
-                    attribute.href(page.path),
-                    event.on_click(UserClickedInternalLink(page.path)),
-                    event.on("mouseover", fn(event) {
-                      Ok(UserHoveredInternalLink(event, page.path))
+                    attribute.class("h-full"),
+                    event.on("dragover", fn(event) {
+                      let assert Ok(event) = pevent.cast_event(event)
+                      Ok(UserDraggedCardOverColumn(event, status))
                     }),
                   ],
-                  [html.text(page.title)],
+                  [],
                 ),
-                html.div([attribute.class(invisible)], [html.text(page.path)]),
-                html.div([attribute.class(invisible)], [
-                  html.text(result.unwrap(page.status, "none")),
-                ]),
-              ],
-            )
-          }),
-        )
-      })
+              ]),
+          )
+        },
+      )
     }),
   )
 }

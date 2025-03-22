@@ -23,7 +23,11 @@ pub fn main(plugin: Plugin) {
     fn(_) { "Trill" },
     fn(view) {
       let container = view.container_el_content(view)
-      html_element.create_el_with_class(container, "div", "trill-container")
+      html_element.create_el_with_class(
+        container,
+        "div",
+        "trill-container h-full",
+      )
       let assert Ok(_) = lustre.start(trill.app(), ".trill-container", plugin)
       Nil
     },

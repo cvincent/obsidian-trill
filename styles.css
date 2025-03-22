@@ -197,6 +197,9 @@
   .inline {
     display: inline;
   }
+  .h-full {
+    height: 100%;
+  }
   .max-w-80 {
     max-width: calc(var(--spacing) * 80);
   }
