@@ -16,9 +16,9 @@ pub type Board(group, inner) {
 }
 
 pub type Card(inner) {
-  Card(inner)
-  SourcePlaceholder(inner)
-  TargetPlaceholder(inner)
+  Card(inner: inner)
+  SourcePlaceholder(inner: inner)
+  TargetPlaceholder(inner: inner)
 }
 
 pub fn new_board(
@@ -196,14 +196,6 @@ pub fn drop(board: Board(group, inner)) {
     })
 
   Board(..board, groups:, dragging: None)
-}
-
-pub fn unwrap_card(card: Card(inner)) {
-  case card {
-    Card(inner) -> inner
-    SourcePlaceholder(inner) -> inner
-    TargetPlaceholder(inner) -> inner
-  }
 }
 
 fn gk_and_group_cards(board: Board(group, inner), card: inner) {

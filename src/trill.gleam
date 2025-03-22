@@ -166,7 +166,7 @@ pub fn view(model: Model) -> Element(Msg) {
           list.append(
             [html.div([attribute.class("mb-2")], [html.text(status)])],
             list.map(cards, fn(card) {
-              let page = board.unwrap_card(card)
+              let page = card.inner
 
               let invisible = case card {
                 Card(_) -> ""
