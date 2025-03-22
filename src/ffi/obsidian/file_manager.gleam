@@ -1,6 +1,7 @@
 import ffi/obsidian/file.{type File}
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
+import gleam/option.{type Option}
 
 pub type FileManager
 
@@ -8,5 +9,5 @@ pub type FileManager
 pub fn process_front_matter(
   fm: FileManager,
   file: File,
-  callback: fn(Dynamic) -> List(#(String, String)),
+  callback: fn(Dynamic) -> List(#(String, Option(String))),
 ) -> Nil

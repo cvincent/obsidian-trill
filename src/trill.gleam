@@ -10,7 +10,7 @@ import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/result
 import lustre.{type App}
 import lustre/attribute
@@ -134,7 +134,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 file_manager.process_front_matter(
                   model.file_manager,
                   file,
-                  fn(yaml) { [#("status", new_status)] },
+                  fn(_yaml) {
+                    case new_status == null_status {
+                      True -> [#("status", None)]
+                      False -> [#("status", Some(new_status))]
+                    }
+                  },
                 )
             }
             Nil
@@ -250,7 +255,7 @@ pub fn view(model: Model) -> Element(Msg) {
                   ),
                   html.div([attribute.class(invisible)], [html.text(page.path)]),
                   html.div([attribute.class(invisible)], [
-                    html.text(result.unwrap(page.status, "none")),
+                    html.text(result.unwrap(page.status, null_status)),
                   ]),
                 ],
               )
