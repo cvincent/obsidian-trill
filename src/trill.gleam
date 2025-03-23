@@ -27,8 +27,6 @@ import obsidian_context.{type ObsidianContext}
 import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
 
-// TODO Extract a Board module
-
 pub const view_name = "trill"
 
 pub fn app() -> App(ObsidianContext, Model, Msg) {
