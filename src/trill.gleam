@@ -187,7 +187,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UserSubmittedNewBoardForm(ev) -> {
       let assert Ok(new_board_config) =
         decode.run(ev, decode.at(["detail"], board_config.from_json()))
-      #(model, effect.none())
+
       let board_configs =
         [new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
