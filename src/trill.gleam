@@ -1,5 +1,7 @@
 import board.{type Board, type Card, Card}
 import board_config.{type BoardConfig, BoardConfig}
+import components
+import ffi/console
 import ffi/dataview.{type Page, Page}
 import ffi/obsidian/file_manager.{type FileManager}
 import ffi/obsidian/plugin.{type Plugin}
@@ -22,7 +24,6 @@ import lustre/element/html as h
 import lustre/event
 import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
-import plinth/javascript/console
 
 // TODO Extract a Board module
 
@@ -272,10 +273,13 @@ fn validate_board_config(
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  case model.board_config {
-    Some(_board_config) -> board_view(model)
-    None -> new_board_view(model)
-  }
+  h.div([], [
+    element.element(components.name("test-component"), [], []),
+    case model.board_config {
+      Some(_board_config) -> board_view(model)
+      None -> new_board_view(model)
+    },
+  ])
 }
 
 fn new_board_view(model: Model) -> Element(Msg) {

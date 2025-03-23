@@ -1,22 +1,15 @@
-import ffi/console
-import ffi/event
-import ffi/obsidian/file.{type File}
-import ffi/obsidian/html_element.{type Event, type HTMLElement}
-import ffi/obsidian/markdown_post_processor_context.{type MarkdownSectionInfo}
-import ffi/obsidian/menu
+import components
+import ffi/obsidian/html_element
 import ffi/obsidian/plugin.{type Plugin}
-import ffi/obsidian/vault
-import ffi/obsidian/view.{type View}
+import ffi/obsidian/view
 import ffi/obsidian/workspace
-import gleam/dict
-import gleam/int
 import gleam/list
-import gleam/result
-import gleam/string
 import lustre
 import trill
 
 pub fn main(plugin: Plugin) {
+  components.setup()
+
   use data <- plugin.load_data(plugin)
 
   plugin.register_view(
@@ -30,6 +23,7 @@ pub fn main(plugin: Plugin) {
         "div",
         "trill-container h-full",
       )
+
       let assert Ok(_) =
         lustre.start(trill.app(), ".trill-container", #(plugin, data))
       Nil
