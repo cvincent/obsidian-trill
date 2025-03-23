@@ -15,7 +15,6 @@ export function process_front_matter(
       } else {
         delete frontmatter[key];
       }
-      console.log([key, val]);
     }
   });
 }
