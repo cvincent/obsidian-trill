@@ -17,6 +17,8 @@ import lustre
 import trill
 
 pub fn main(plugin: Plugin) {
+  use data <- plugin.load_data(plugin)
+
   plugin.register_view(
     plugin,
     trill.view_name,
@@ -28,7 +30,8 @@ pub fn main(plugin: Plugin) {
         "div",
         "trill-container h-full",
       )
-      let assert Ok(_) = lustre.start(trill.app(), ".trill-container", plugin)
+      let assert Ok(_) =
+        lustre.start(trill.app(), ".trill-container", #(plugin, data))
       Nil
     },
     fn(_) { Nil },

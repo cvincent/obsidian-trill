@@ -1,3 +1,4 @@
+import board_config.{type BoardConfig}
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}

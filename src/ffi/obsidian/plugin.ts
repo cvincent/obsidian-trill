@@ -59,3 +59,12 @@ export function get_workspace(plugin: Plugin): Workspace {
 export function get_file_manager(plugin: Plugin): FileManager {
   return plugin.app.fileManager;
 }
+
+export function save_data(plugin: Plugin, data: string) {
+  plugin.saveData(data);
+}
+
+export async function load_data(plugin: Plugin, callback: (data: any) => void) {
+  let data = await plugin.loadData();
+  callback(data);
+}

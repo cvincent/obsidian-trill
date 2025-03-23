@@ -6,6 +6,7 @@ import ffi/obsidian/markdown_post_processor_context.{
 import ffi/obsidian/vault.{type Vault}
 import ffi/obsidian/view.{type View}
 import ffi/obsidian/workspace.{type Workspace}
+import gleam/dynamic.{type Dynamic}
 
 pub type Plugin
 
@@ -47,3 +48,9 @@ pub fn get_workspace(plugin: Plugin) -> Workspace
 
 @external(javascript, "src/ffi/obsidian/plugin.ts", "get_file_manager")
 pub fn get_file_manager(plugin: Plugin) -> FileManager
+
+@external(javascript, "src/ffi/obsidian/plugin.ts", "save_data")
+pub fn save_data(plugin: Plugin, data: any) -> void
+
+@external(javascript, "src/ffi/obsidian/plugin.ts", "load_data")
+pub fn load_data(plugin: Plugin, callback: fn(Dynamic) -> Nil) -> Nil
