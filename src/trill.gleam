@@ -9,9 +9,7 @@ import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
-import gleam/dynamic/decode
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -47,26 +45,13 @@ pub type Model {
   )
 }
 
-const null_status = "none"
-
-pub const statuses = [
-  null_status,
-  "inbox",
-  "ideas",
-  "needs-research",
-  "ready",
-  "done",
-]
-
-const new_board_config = BoardConfig("", "", statuses)
-
 fn group_key_fn(page: Page) {
-  result.unwrap(page.status, null_status)
+  result.unwrap(page.status, board_config.null_status)
 }
 
 fn update_group_key_fn(page: Page, new_status: String) {
   let status = case new_status {
-    s if s == null_status -> Error(null_status)
+    s if s == board_config.null_status -> Error(board_config.null_status)
     s -> Ok(s)
   }
   Page(..page, status:)
@@ -75,27 +60,7 @@ fn update_group_key_fn(page: Page, new_status: String) {
 pub fn init(data) -> #(Model, Effect(Msg)) {
   let #(plugin, data) = data
 
-  let data =
-    data
-    |> decode.run(decode.string)
-    |> result.unwrap("{\"board_configs\": []}")
-
-  let data_decoder = {
-    use board_configs <- decode.field(
-      "board_configs",
-      decode.list({
-        use name <- decode.field("name", decode.string)
-        use query <- decode.field("query", decode.string)
-        decode.success(BoardConfig(name:, query:, statuses:))
-      }),
-    )
-    decode.success(board_configs)
-  }
-
-  let board_configs =
-    data
-    |> json.parse(data_decoder)
-    |> result.unwrap([])
+  let board_configs = board_config.list_from_json(data)
 
   let board_config =
     board_configs
@@ -103,7 +68,10 @@ pub fn init(data) -> #(Model, Effect(Msg)) {
     |> result.map(fn(board_config) { Some(board_config) })
     |> result.unwrap(None)
 
-  let board = new_board_from_config(board_config)
+  let board =
+    option.map(board_config, fn(board_config) {
+      new_board_from_config(board_config)
+    })
 
   let model =
     Model(
@@ -114,7 +82,7 @@ pub fn init(data) -> #(Model, Effect(Msg)) {
       file_manager: plugin.get_file_manager(plugin),
       vault: plugin.get_vault(plugin),
       workspace: plugin.get_workspace(plugin),
-      new_board_config: new_board_config,
+      new_board_config: board_config.new_board_config,
     )
 
   #(model, effect.none())
@@ -175,7 +143,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                   model.file_manager,
                   file,
                   fn(_yaml) {
-                    case new_status == null_status {
+                    case new_status == board_config.null_status {
                       True -> [#("status", None)]
                       False -> [#("status", Some(new_status))]
                     }
@@ -251,29 +219,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         [model.new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
-      let save_data =
-        json.object([
-          #(
-            "board_configs",
-            json.array(board_configs, fn(bc) {
-              json.object([
-                #("name", json.string(bc.name)),
-                #("query", json.string(bc.query)),
-              ])
-            }),
-          ),
-        ])
-        |> json.to_string()
-
+      let save_data = board_config.list_to_json(board_configs)
       plugin.save_data(model.plugin, save_data)
 
       #(
         Model(
           ..model,
           board_configs:,
-          new_board_config: new_board_config,
+          new_board_config: board_config.new_board_config,
           board_config: Some(model.new_board_config),
-          board: new_board_from_config(Some(model.new_board_config)),
+          board: Some(new_board_from_config(model.new_board_config)),
         ),
         effect.none(),
       )
@@ -283,20 +238,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   #(model, effect)
 }
 
-fn new_board_from_config(board_config: Option(BoardConfig)) {
-  case board_config {
-    Some(board_config) ->
-      board.new_board(
-        group_keys: statuses,
-        cards: dataview.pages(board_config.query),
-        group_key_fn:,
-        update_group_key_fn:,
-      )
-      |> Some()
-    None -> None
-  }
+fn new_board_from_config(board_config: BoardConfig) {
+  board.new_board(
+    group_keys: board_config.statuses,
+    cards: dataview.pages(board_config.query),
+    group_key_fn:,
+    update_group_key_fn:,
+  )
 }
 
+// TODO: Extract this to board_config; the caller will need to augment the query
+// error, as board and board_config are agnostic about the inner card value as
+// well as about how queries are used
 fn validate_board_config(
   board_config: BoardConfig,
 ) -> Dict(String, Result(Option(String), String)) {
@@ -471,7 +424,7 @@ fn board_view(model: Model) -> Element(Msg) {
                   ),
                   h.div([attr.class(invisible)], [h.text(page.path)]),
                   h.div([attr.class(invisible)], [
-                    h.text(result.unwrap(page.status, null_status)),
+                    h.text(result.unwrap(page.status, board_config.null_status)),
                   ]),
                 ],
               )
