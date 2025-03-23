@@ -3,17 +3,16 @@ import board_config.{type BoardConfig, BoardConfig}
 import components
 import ffi/console
 import ffi/dataview.{type Page, Page}
-import ffi/obsidian/file_manager.{type FileManager}
-import ffi/obsidian/plugin.{type Plugin}
-import ffi/obsidian/vault.{type Vault}
-import ffi/obsidian/workspace.{type Workspace}
+import ffi/obsidian/file_manager
+import ffi/obsidian/plugin
+import ffi/obsidian/vault
+import ffi/obsidian/workspace
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -24,6 +23,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
+import obsidian_context.{type ObsidianContext}
 import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
 
@@ -31,16 +31,13 @@ import plinth/browser/event.{type Event as PEvent} as pevent
 
 pub const view_name = "trill"
 
-pub fn app() -> App(#(Plugin, Dynamic), Model, Msg) {
+pub fn app() -> App(ObsidianContext, Model, Msg) {
   lustre.application(init, update, view)
 }
 
 pub type Model {
   Model(
-    file_manager: FileManager,
-    plugin: Plugin,
-    vault: Vault,
-    workspace: Workspace,
+    obsidian_context: ObsidianContext,
     new_board_config: BoardConfig,
     board_config: Option(BoardConfig),
     board_configs: List(BoardConfig),
@@ -60,10 +57,8 @@ fn update_group_key_fn(page: Page, new_status: String) {
   Page(..page, status:)
 }
 
-pub fn init(data) -> #(Model, Effect(Msg)) {
-  let #(plugin, data) = data
-
-  let board_configs = board_config.list_from_json(data)
+pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
+  let board_configs = board_config.list_from_json(obsidian_context.saved_data)
 
   let board_config =
     board_configs
@@ -81,11 +76,8 @@ pub fn init(data) -> #(Model, Effect(Msg)) {
       board_configs:,
       board_config:,
       board:,
-      plugin: plugin,
-      file_manager: plugin.get_file_manager(plugin),
-      vault: plugin.get_vault(plugin),
-      workspace: plugin.get_workspace(plugin),
       new_board_config: board_config.new_board_config,
+      obsidian_context:,
     )
 
   #(model, effect.none())
@@ -111,14 +103,19 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UserClickedInternalLink(path) -> #(
       model,
       effect.from(fn(_) {
-        workspace.open_link_text(model.workspace, path, "tab")
+        workspace.open_link_text(model.obsidian_context.workspace, path, "tab")
       }),
     )
 
     UserHoveredInternalLink(event, path) -> #(
       model,
       effect.from(fn(_) {
-        workspace.trigger_hover_link(model.workspace, event, view_name, path)
+        workspace.trigger_hover_link(
+          model.obsidian_context.workspace,
+          event,
+          view_name,
+          path,
+        )
       }),
     )
 
@@ -141,11 +138,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         True -> effect.none()
         False ->
           effect.from(fn(_) {
-            case vault.get_file_by_path(model.vault, page.path) {
+            case
+              vault.get_file_by_path(model.obsidian_context.vault, page.path)
+            {
               Error(_) -> Nil
               Ok(file) ->
                 file_manager.process_front_matter(
-                  model.file_manager,
+                  model.obsidian_context.file_manager,
                   file,
                   fn(_yaml) {
                     case new_status == board_config.null_status {
@@ -225,7 +224,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
       let save_data = board_config.list_to_json(board_configs)
-      plugin.save_data(model.plugin, save_data)
+      plugin.save_data(model.obsidian_context.plugin, save_data)
 
       #(
         Model(

@@ -5,12 +5,22 @@ import ffi/obsidian/view
 import ffi/obsidian/workspace
 import gleam/list
 import lustre
+import obsidian_context.{ObsidianContext}
 import trill
 
 pub fn main(plugin: Plugin) {
   components.setup()
 
-  use data <- plugin.load_data(plugin)
+  use saved_data <- plugin.load_data(plugin)
+
+  let obsidian_context =
+    ObsidianContext(
+      file_manager: plugin.get_file_manager(plugin),
+      plugin:,
+      saved_data:,
+      vault: plugin.get_vault(plugin),
+      workspace: plugin.get_workspace(plugin),
+    )
 
   plugin.register_view(
     plugin,
@@ -25,7 +35,7 @@ pub fn main(plugin: Plugin) {
       )
 
       let assert Ok(_) =
-        lustre.start(trill.app(), ".trill-container", #(plugin, data))
+        lustre.start(trill.app(), ".trill-container", obsidian_context)
       Nil
     },
     fn(_) { Nil },
