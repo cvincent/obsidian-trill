@@ -5,11 +5,10 @@ import gleam/list
 import gleam/string
 import gleam/time/timestamp
 import test_component
-import test_component_2
 
 const namespace = "trill"
 
-const components = [test_component.register, test_component_2.register]
+const components = [test_component.register]
 
 const timestamp_key = "components-timestamp"
 

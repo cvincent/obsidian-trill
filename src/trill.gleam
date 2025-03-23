@@ -11,7 +11,9 @@ import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
+import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -100,10 +102,12 @@ pub type Msg {
   UserUpdatedNewBoardName(new_board_name: String)
   UserUpdatedNewBoardQuery(new_board_query: String)
   UserClickedCreateProject
+
+  FromChild(payload: String)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
-  let #(model, effect) = case msg {
+  case msg {
     UserClickedInternalLink(path) -> #(
       model,
       effect.from(fn(_) {
@@ -234,9 +238,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         effect.none(),
       )
     }
-  }
 
-  #(model, effect)
+    FromChild(payload) -> {
+      console.log("FROM CHILD: " <> payload)
+      #(model, effect.none())
+    }
+  }
 }
 
 fn new_board_from_config(board_config: BoardConfig) {
@@ -273,13 +280,29 @@ fn validate_board_config(
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  h.div([], [
-    element.element(components.name("test-component"), [], []),
-    case model.board_config {
-      Some(_board_config) -> board_view(model)
-      None -> new_board_view(model)
-    },
-  ])
+  h.div(
+    [
+      event.on("from-child", fn(event) {
+        let assert Ok(payload) =
+          decode.run(
+            event,
+            decode.at(["detail", "encapsulated"], decode.string),
+          )
+        Ok(FromChild(payload))
+      }),
+    ],
+    [
+      element.element(
+        components.name("test-component"),
+        [attr.attribute("parent-msg", "from-child")],
+        [],
+      ),
+      case model.board_config {
+        Some(_board_config) -> board_view(model)
+        None -> new_board_view(model)
+      },
+    ],
+  )
 }
 
 fn new_board_view(model: Model) -> Element(Msg) {
