@@ -9,7 +9,7 @@ import ffi/obsidian/vault
 import ffi/obsidian/workspace
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
@@ -38,7 +38,6 @@ pub fn app() -> App(ObsidianContext, Model, Msg) {
 pub type Model {
   Model(
     obsidian_context: ObsidianContext,
-    new_board_config: BoardConfig,
     board_config: Option(BoardConfig),
     board_configs: List(BoardConfig),
     board: Option(Board(String, Page)),
@@ -71,14 +70,7 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
       new_board_from_config(board_config)
     })
 
-  let model =
-    Model(
-      board_configs:,
-      board_config:,
-      board:,
-      new_board_config: board_config.new_board_config,
-      obsidian_context:,
-    )
+  let model = Model(board_configs:, board_config:, board:, obsidian_context:)
 
   #(model, effect.none())
 }
@@ -91,11 +83,7 @@ pub type Msg {
   UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
   UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
 
-  UserUpdatedNewBoardName(new_board_name: String)
-  UserUpdatedNewBoardQuery(new_board_query: String)
-  UserClickedCreateProject
-
-  FromChild(payload: String)
+  UserSubmittedNewBoardForm(event: Dynamic)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -196,31 +184,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    UserUpdatedNewBoardName(new_board_name) -> #(
-      Model(
-        ..model,
-        new_board_config: BoardConfig(
-          ..model.new_board_config,
-          name: new_board_name,
-        ),
-      ),
-      effect.none(),
-    )
-
-    UserUpdatedNewBoardQuery(new_board_query) -> #(
-      Model(
-        ..model,
-        new_board_config: BoardConfig(
-          ..model.new_board_config,
-          query: new_board_query,
-        ),
-      ),
-      effect.none(),
-    )
-
-    UserClickedCreateProject -> {
+    UserSubmittedNewBoardForm(ev) -> {
+      let assert Ok(new_board_config) =
+        decode.run(ev, decode.at(["detail"], board_config.from_json()))
+      #(model, effect.none())
       let board_configs =
-        [model.new_board_config, ..model.board_configs]
+        [new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
       let save_data = board_config.list_to_json(board_configs)
@@ -230,17 +199,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Model(
           ..model,
           board_configs:,
-          new_board_config: board_config.new_board_config,
-          board_config: Some(model.new_board_config),
-          board: Some(new_board_from_config(model.new_board_config)),
+          board_config: Some(new_board_config),
+          board: Some(new_board_from_config(new_board_config)),
         ),
         effect.none(),
       )
-    }
-
-    FromChild(payload) -> {
-      console.log("FROM CHILD: " <> payload)
-      #(model, effect.none())
     }
   }
 }
@@ -254,133 +217,28 @@ fn new_board_from_config(board_config: BoardConfig) {
   )
 }
 
-// TODO: Extract this to board_config; the caller will need to augment the query
-// error, as board and board_config are agnostic about the inner card value as
-// well as about how queries are used
-fn validate_board_config(
-  board_config: BoardConfig,
-) -> Dict(String, Result(Option(String), String)) {
-  let name_error = case board_config.name {
-    "" -> Error("Must have a name.")
-    _ -> Ok(None)
-  }
-
-  let query_error = case dataview.pages(board_config.query) {
-    [] -> Error("Query returned no notes.")
-    pages ->
-      Ok(Some(
-        "Your query resulted in "
-        <> int.to_string(list.length(pages))
-        <> " notes.",
-      ))
-  }
-
-  dict.from_list([#("name", name_error), #("query", query_error)])
-}
-
 pub fn view(model: Model) -> Element(Msg) {
   h.div(
     [
-      event.on("from-child", fn(event) {
-        let assert Ok(payload) =
-          decode.run(
-            event,
-            decode.at(["detail", "encapsulated"], decode.string),
-          )
-        Ok(FromChild(payload))
+      event.on("user-submitted-new-board-form", fn(payload) {
+        Ok(UserSubmittedNewBoardForm(payload))
       }),
     ],
     [
-      element.element(
-        components.name("test-component"),
-        [attr.attribute("parent-msg", "from-child")],
-        [],
-      ),
       case model.board_config {
         Some(_board_config) -> board_view(model)
-        None -> new_board_view(model)
+        None ->
+          element.element(
+            components.name("board-config-form"),
+            [
+              attr.attribute("emit-submit", "user-submitted-new-board-form"),
+              attr.attribute("submit-label", "Create Board"),
+            ],
+            [],
+          )
       },
     ],
   )
-}
-
-fn new_board_view(model: Model) -> Element(Msg) {
-  let heading = case model.new_board_config.name {
-    "" -> "Create a New Board"
-    name -> name
-  }
-
-  let errors = validate_board_config(model.new_board_config)
-
-  let enabled = case errors |> dict.values() |> result.all() {
-    Error(_) -> attr.disabled(True)
-    _ -> attr.none()
-  }
-
-  h.div([attr.class("flex h-full items-center justify-center")], [
-    h.div([attr.class("w-2/3 max-w-2xl")], [
-      h.h1([attr.class("text-center")], [h.text(heading)]),
-      text_field(
-        "Board name",
-        None,
-        model.new_board_config.name,
-        dict.get(errors, "name"),
-        UserUpdatedNewBoardName,
-      ),
-      text_field(
-        "Query",
-        Some(
-          "This Dataview query will be used to select what notes to display as cards.",
-        ),
-        model.new_board_config.query,
-        dict.get(errors, "query"),
-        UserUpdatedNewBoardQuery,
-      ),
-      h.div([attr.class("flex justify-end mt-4")], [
-        h.button([enabled, event.on_click(UserClickedCreateProject)], [
-          h.text("Create Board"),
-        ]),
-      ]),
-    ]),
-  ])
-}
-
-fn text_field(
-  label: String,
-  description: Option(String),
-  value: String,
-  message: Result(Result(Option(String), String), Nil),
-  update_constructor: fn(String) -> Msg,
-) {
-  h.div([attr.class("setting-item")], [
-    h.div([attr.class("setting-item-info")], [
-      h.div([attr.class("setting-item-name")], [h.text(label)]),
-      h.div([attr.class("setting-item-description")], [
-        case description {
-          None -> element.none()
-          Some(description) -> h.div([], [h.text(description)])
-        },
-        field_message(message),
-      ]),
-    ]),
-    h.div([attr.class("setting-item-control")], [
-      h.input([
-        attr.class("min-w-80"),
-        attr.type_("text"),
-        attr.value(value),
-        event.on_input(update_constructor),
-      ]),
-    ]),
-  ])
-}
-
-fn field_message(message: Result(Result(Option(String), String), Nil)) {
-  case message {
-    Ok(Ok(Some(message))) -> h.div([], [h.text(message)])
-    Ok(Error(error)) ->
-      h.div([attr.class("text-(--text-error)")], [h.text(error)])
-    _ -> h.div([attr.class("whitespace-pre")], [h.text(" ")])
-  }
 }
 
 fn board_view(model: Model) -> Element(Msg) {

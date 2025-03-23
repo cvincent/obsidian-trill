@@ -1,14 +1,14 @@
+import board_config_form
 import ffi/plinth_ext/global
 import gleam/float
 import gleam/int
 import gleam/list
 import gleam/string
 import gleam/time/timestamp
-import test_component
 
 const namespace = "trill"
 
-const components = [test_component.register]
+const components = [board_config_form.register]
 
 const timestamp_key = "components-timestamp"
 

@@ -22,16 +22,15 @@ pub const statuses = [
 
 pub const new_board_config = BoardConfig("", "", statuses)
 
+pub fn from_json() {
+  use name <- decode.field("name", decode.string)
+  use query <- decode.field("query", decode.string)
+  decode.success(BoardConfig(name:, query:, statuses: statuses))
+}
+
 pub fn list_from_json(data: Dynamic) {
   let data_decoder = {
-    use board_configs <- decode.field(
-      "board_configs",
-      decode.list({
-        use name <- decode.field("name", decode.string)
-        use query <- decode.field("query", decode.string)
-        decode.success(BoardConfig(name:, query:, statuses: statuses))
-      }),
-    )
+    use board_configs <- decode.field("board_configs", decode.list(from_json()))
     decode.success(board_configs)
   }
 
@@ -42,17 +41,26 @@ pub fn list_from_json(data: Dynamic) {
   |> result.unwrap([])
 }
 
-pub fn list_to_json(board_configs: List(BoardConfig)) {
+pub fn to_json(board_config: BoardConfig) {
   json.object([
-    #(
-      "board_configs",
-      json.array(board_configs, fn(bc) {
-        json.object([
-          #("name", json.string(bc.name)),
-          #("query", json.string(bc.query)),
-        ])
-      }),
-    ),
+    #("name", json.string(board_config.name)),
+    #("query", json.string(board_config.query)),
   ])
+}
+
+pub fn list_to_json(board_configs: List(BoardConfig)) {
+  json.object([#("board_configs", json.array(board_configs, to_json))])
   |> json.to_string()
+}
+
+pub fn update(
+  board_config: BoardConfig,
+  field: String,
+  value: String,
+) -> BoardConfig {
+  case field {
+    "name" -> BoardConfig(..board_config, name: value)
+    "query" -> BoardConfig(..board_config, query: value)
+    _ -> board_config
+  }
 }
