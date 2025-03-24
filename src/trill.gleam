@@ -72,7 +72,7 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
 
   let board =
     option.map(board_config, fn(board_config) {
-      new_board_from_config(board_config)
+      board_from_config(board_config)
     })
 
   let model =
@@ -105,6 +105,7 @@ pub type Msg {
   UserClickedEditBoard
   UserSubmittedEditBoardForm(event: Dynamic)
   UserClickedNewBoard
+  UserSelectedBoardConfig(board_config: BoardConfig)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -218,7 +219,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           board_configs:,
           board_config: Some(new_board_config),
-          board: Some(new_board_from_config(new_board_config)),
+          board: Some(board_from_config(new_board_config)),
         ),
         effect.from(fn(_) {
           option.map(model.modal, fn(modal) { modal.close(modal) })
@@ -272,7 +273,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           ..model,
           board_configs:,
           board_config: Some(updated_board_config),
-          board: Some(new_board_from_config(updated_board_config)),
+          board: Some(board_from_config(updated_board_config)),
           modal: None,
         ),
         effect.from(fn(_) {
@@ -292,10 +293,23 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       #(Model(..model, modal: Some(modal)), effect.none())
     }
+
+    UserSelectedBoardConfig(board_config) -> {
+      #(
+        Model(
+          ..model,
+          board_config: Some(board_config),
+          board: Some(board_from_config(board_config)),
+        ),
+        effect.none(),
+      )
+    }
   }
 }
 
-fn new_board_from_config(board_config: BoardConfig) {
+// TODO: Listen for changes from Obsidian and update
+
+fn board_from_config(board_config: BoardConfig) {
   board.new_board(
     group_keys: board_config.statuses,
     cards: dataview.pages(board_config.query),
@@ -370,6 +384,22 @@ fn board_view(model: Model) -> Element(Msg) {
 
   h.div([], [
     h.div([attr.class("flex justify-start mb-2")], [
+      h.select(
+        [
+          attr.class("dropdown"),
+          event.on_input(fn(value) {
+            let assert Ok(board_config) =
+              list.find(model.board_configs, fn(bc) { bc.name == value })
+            UserSelectedBoardConfig(board_config)
+          }),
+        ],
+        list.map(model.board_configs, fn(board_config) {
+          h.option(
+            [attr.selected(Some(board_config) == model.board_config)],
+            board_config.name,
+          )
+        }),
+      ),
       h.div(
         [
           attr.class(
