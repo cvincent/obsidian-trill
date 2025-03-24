@@ -149,6 +149,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         True -> effect.none()
         False ->
           effect.from(fn(_) {
+            // TODO: Encapsulate setting a single Frontmatter property
             case
               vault.get_file_by_path(model.obsidian_context.vault, page.path)
             {
