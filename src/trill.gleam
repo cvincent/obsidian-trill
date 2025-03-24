@@ -1,9 +1,12 @@
 import board.{type Board, type Card, Card}
 import board_config.{type BoardConfig, BoardConfig}
+import board_config_form
 import components
+import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
 import ffi/obsidian/file_manager
+import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
 import ffi/obsidian/workspace
@@ -13,10 +16,12 @@ import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import icons
 import lustre.{type App}
 import lustre/attribute as attr
 import lustre/effect.{type Effect}
@@ -26,6 +31,7 @@ import lustre/event
 import obsidian_context.{type ObsidianContext}
 import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
+import plinth/browser/window
 
 pub const view_name = "trill"
 
@@ -39,6 +45,7 @@ pub type Model {
     board_config: Option(BoardConfig),
     board_configs: List(BoardConfig),
     board: Option(Board(String, Page)),
+    modal: Option(Modal),
   )
 }
 
@@ -68,9 +75,21 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
       new_board_from_config(board_config)
     })
 
-  let model = Model(board_configs:, board_config:, board:, obsidian_context:)
+  let model =
+    Model(board_configs:, board_config:, board:, obsidian_context:, modal: None)
 
-  #(model, effect.none())
+  #(
+    model,
+    effect.from(fn(dispatch) {
+      window.add_event_listener("user-submitted-new-board-form", fn(ev) {
+        dispatch(UserSubmittedNewBoardForm(dynamic.from(ev)))
+      })
+
+      window.add_event_listener("user-submitted-edit-board-form", fn(ev) {
+        dispatch(UserSubmittedEditBoardForm(dynamic.from(ev)))
+      })
+    }),
+  )
 }
 
 pub type Msg {
@@ -82,6 +101,9 @@ pub type Msg {
   UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
 
   UserSubmittedNewBoardForm(event: Dynamic)
+  UserClickedBoardMenu(event: Dynamic)
+  UserClickedEditBoard
+  UserSubmittedEditBoardForm(event: Dynamic)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -190,8 +212,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         [new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
-      let save_data = board_config.list_to_json(board_configs)
-      plugin.save_data(model.obsidian_context.plugin, save_data)
+      save_board_configs(model, board_configs)
 
       #(
         Model(
@@ -201,6 +222,70 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           board: Some(new_board_from_config(new_board_config)),
         ),
         effect.none(),
+      )
+    }
+
+    UserClickedBoardMenu(ev) -> {
+      #(
+        model,
+        context_menu.show(ev, [
+          #("Edit board", "pencil", fn(dispatch) {
+            dispatch(UserClickedEditBoard)
+          }),
+        ]),
+      )
+    }
+
+    UserClickedEditBoard -> {
+      let form =
+        board_config_form.element(
+          components.name,
+          model.board_config,
+          "user-submitted-edit-board-form",
+          "Save Board",
+        )
+        |> element.to_string()
+
+      let modal =
+        modal.open(
+          model.obsidian_context.app,
+          on_open: fn(_modal, content_el) {
+            pelement.set_inner_html(content_el, form)
+            Nil
+          },
+          on_close: fn(_modal, _content_element) { Nil },
+        )
+
+      #(Model(..model, modal: Some(modal)), effect.none())
+    }
+
+    UserSubmittedEditBoardForm(ev) -> {
+      let assert Some(current_board_config) = model.board_config
+
+      let assert Ok(updated_board_config) =
+        decode.run(ev, decode.at(["detail"], board_config.from_json()))
+
+      let board_configs =
+        model.board_configs
+        |> list.map(fn(bc) {
+          case bc {
+            bc if bc == current_board_config -> updated_board_config
+            bc -> bc
+          }
+        })
+
+      #(
+        Model(
+          ..model,
+          board_configs:,
+          board_config: Some(updated_board_config),
+          board: Some(new_board_from_config(updated_board_config)),
+          modal: None,
+        ),
+        effect.from(fn(_) {
+          option.map(model.modal, fn(modal) { modal.close(modal) })
+          save_board_configs(model, board_configs)
+        }),
       )
     }
   }
@@ -215,117 +300,131 @@ fn new_board_from_config(board_config: BoardConfig) {
   )
 }
 
+fn save_board_configs(model: Model, board_configs: List(BoardConfig)) {
+  let save_data = board_config.list_to_json(board_configs)
+  plugin.save_data(model.obsidian_context.plugin, save_data)
+}
+
 pub fn view(model: Model) -> Element(Msg) {
-  h.div(
-    [
-      event.on("user-submitted-new-board-form", fn(payload) {
-        Ok(UserSubmittedNewBoardForm(payload))
-      }),
-    ],
-    [
-      case model.board_config {
-        Some(_board_config) -> board_view(model)
-        None ->
-          element.element(
-            components.name("board-config-form"),
-            [
-              attr.attribute("emit-submit", "user-submitted-new-board-form"),
-              attr.attribute("submit-label", "Create Board"),
-            ],
-            [],
-          )
-      },
-    ],
-  )
+  case model.board_config {
+    Some(_board_config) -> board_view(model)
+    None ->
+      h.div([attr.class("w-2/3 max-w-2xl")], [
+        board_config_form.element(
+          components.name,
+          None,
+          "user-submitted-new-board-form",
+          "Create Board",
+        ),
+      ])
+  }
 }
 
 fn board_view(model: Model) -> Element(Msg) {
   let assert Some(board) = model.board
 
-  h.div(
-    [attr.class("flex h-full")],
-    list.map(board.group_keys, fn(status) {
-      let assert Ok(cards) = dict.get(board.groups, status)
-      let column_droppable = case list.length(cards) {
-        0 ->
-          event.on("dragover", fn(event) {
-            let assert Ok(event) = pevent.cast_event(event)
-            Ok(UserDraggedCardOverColumn(event, status))
-          })
-
-        _ -> attr.none()
-      }
-
+  h.div([], [
+    h.div([attr.class("flex justify-start mb-2")], [
       h.div(
-        [attr.class("min-w-80 max-w-80 mr-4 height-full"), column_droppable],
-        {
-          list.append(
-            [h.div([attr.class("mb-2")], [h.text(status)])],
-            list.map(cards, fn(card) {
-              let page = card.inner
-
-              let invisible = case card {
-                Card(_) -> ""
-                _ -> "invisible"
-              }
-
-              let dragover = case card {
-                Card(_) ->
-                  event.on("dragover", fn(event) {
-                    let assert Ok(event) = pevent.cast_event(event)
-                    Ok(UserDraggedCardOverTarget(event, card))
-                  })
-
-                _ -> attr.none()
-              }
-
-              h.div(
-                [
-                  attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
-                  attr.attribute("draggable", "true"),
-                  event.on("dragstart", fn(event) {
-                    Ok(UserStartedDraggingCard(event, card))
-                  }),
-                  event.on("dragend", fn(event) {
-                    Ok(UserStoppedDraggingCard(event))
-                  }),
-                  dragover,
-                ],
-                [
-                  h.a(
-                    [
-                      attr.class("internal-link"),
-                      attr.class(invisible),
-                      attr.href(page.path),
-                      event.on_click(UserClickedInternalLink(page.path)),
-                      event.on("mouseover", fn(event) {
-                        Ok(UserHoveredInternalLink(event, page.path))
-                      }),
-                    ],
-                    [h.text(page.title)],
-                  ),
-                  h.div([attr.class(invisible)], [h.text(page.path)]),
-                  h.div([attr.class(invisible)], [
-                    h.text(result.unwrap(page.status, board_config.null_status)),
-                  ]),
-                ],
-              )
+        [
+          attr.class(
+            "clickable-icon [--icon-size:var(--icon-s)] [--icon-stroke:var(--icon-s-stroke-width)]",
+          ),
+          event.on("click", fn(ev) { Ok(UserClickedBoardMenu(ev)) }),
+        ],
+        [icons.icon("ellipsis-vertical")],
+      ),
+    ]),
+    h.div(
+      [attr.class("flex h-full")],
+      list.map(board.group_keys, fn(status) {
+        let assert Ok(cards) = dict.get(board.groups, status)
+        let column_droppable = case list.length(cards) {
+          0 ->
+            event.on("dragover", fn(event) {
+              let assert Ok(event) = pevent.cast_event(event)
+              Ok(UserDraggedCardOverColumn(event, status))
             })
-              |> list.append([
+
+          _ -> attr.none()
+        }
+
+        h.div(
+          [attr.class("min-w-80 max-w-80 mr-4 height-full"), column_droppable],
+          {
+            list.append(
+              [h.div([attr.class("mb-2")], [h.text(status)])],
+              list.map(cards, fn(card) {
+                let page = card.inner
+
+                let invisible = case card {
+                  Card(_) -> ""
+                  _ -> "invisible"
+                }
+
+                let dragover = case card {
+                  Card(_) ->
+                    event.on("dragover", fn(ev) {
+                      let assert Ok(ev) = pevent.cast_event(ev)
+                      Ok(UserDraggedCardOverTarget(ev, card))
+                    })
+
+                  _ -> attr.none()
+                }
+
                 h.div(
                   [
-                    attr.class("h-full"),
-                    event.on("dragover", fn(event) {
-                      let assert Ok(event) = pevent.cast_event(event)
-                      Ok(UserDraggedCardOverColumn(event, status))
+                    attr.class(
+                      "bg-(--background-secondary) mb-2 p-4 rounded-md",
+                    ),
+                    attr.attribute("draggable", "true"),
+                    event.on("dragstart", fn(ev) {
+                      Ok(UserStartedDraggingCard(ev, card))
                     }),
+                    event.on("dragend", fn(ev) {
+                      Ok(UserStoppedDraggingCard(ev))
+                    }),
+                    dragover,
                   ],
-                  [],
-                ),
-              ]),
-          )
-        },
-      )
-    }),
-  )
+                  [
+                    h.a(
+                      [
+                        attr.class("internal-link"),
+                        attr.class(invisible),
+                        attr.href(page.path),
+                        event.on_click(UserClickedInternalLink(page.path)),
+                        event.on("mouseover", fn(ev) {
+                          Ok(UserHoveredInternalLink(ev, page.path))
+                        }),
+                      ],
+                      [h.text(page.title)],
+                    ),
+                    h.div([attr.class(invisible)], [h.text(page.path)]),
+                    h.div([attr.class(invisible)], [
+                      h.text(result.unwrap(
+                        page.status,
+                        board_config.null_status,
+                      )),
+                    ]),
+                  ],
+                )
+              })
+                |> list.append([
+                  h.div(
+                    [
+                      attr.class("h-full"),
+                      event.on("dragover", fn(ev) {
+                        let assert Ok(ev) = pevent.cast_event(ev)
+                        Ok(UserDraggedCardOverColumn(ev, status))
+                      }),
+                    ],
+                    [],
+                  ),
+                ]),
+            )
+          },
+        )
+      }),
+    ),
+  ])
 }

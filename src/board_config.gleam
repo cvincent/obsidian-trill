@@ -1,8 +1,6 @@
-import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/json
-import gleam/option.{type Option, None, Some}
 import gleam/result
 
 pub type BoardConfig {
@@ -21,6 +19,11 @@ pub const statuses = [
 ]
 
 pub const new_board_config = BoardConfig("", "", statuses)
+
+// TODO: Make these more consistent; it should be clear when we're working with
+// strings vs dynamics
+
+// TODO: We need UUIDs
 
 pub fn from_json() {
   use name <- decode.field("name", decode.string)

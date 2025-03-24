@@ -225,6 +225,9 @@
   .justify-end {
     justify-content: flex-end;
   }
+  .justify-start {
+    justify-content: flex-start;
+  }
   .rounded-md {
     border-radius: var(--radius-md);
   }
@@ -245,5 +248,11 @@
   }
   .text-\(--text-error\) {
     color: var(--text-error);
+  }
+  .\[--icon-size\:var\(--icon-s\)\] {
+    --icon-size: var(--icon-s);
+  }
+  .\[--icon-stroke\:var\(--icon-s-stroke-width\)\] {
+    --icon-stroke: var(--icon-s-stroke-width);
   }
 }

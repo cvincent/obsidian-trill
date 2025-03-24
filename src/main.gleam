@@ -15,6 +15,7 @@ pub fn main(plugin: Plugin) {
 
   let obsidian_context =
     ObsidianContext(
+      app: plugin.get_app(plugin),
       file_manager: plugin.get_file_manager(plugin),
       plugin:,
       saved_data:,

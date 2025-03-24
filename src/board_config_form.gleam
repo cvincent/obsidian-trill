@@ -5,6 +5,7 @@ import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -15,7 +16,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
 
-const attrs = ["emit-submit", "submit-label"]
+const attrs = ["board-config", "emit-submit", "submit-label"]
 
 pub fn register(callback) {
   callback("board-config-form", fn(name) { lustre.register(component(), name) })
@@ -33,6 +34,34 @@ fn on_attribute_change() {
     })
     |> dict.from_list()
   a
+}
+
+pub fn element(
+  name_func: fn(String) -> String,
+  given_board_config: Option(BoardConfig),
+  emit_submit: String,
+  submit_label: String,
+) {
+  let board_config_attr = case given_board_config {
+    None -> attr.none()
+    Some(given_board_config) -> {
+      let board_config_json =
+        board_config.to_json(given_board_config)
+        |> json.to_string()
+
+      attr.attribute("board-config", board_config_json)
+    }
+  }
+
+  element.element(
+    name_func("board-config-form"),
+    [
+      board_config_attr,
+      attr.attribute("emit-submit", emit_submit),
+      attr.attribute("submit-label", submit_label),
+    ],
+    [],
+  )
 }
 
 pub type Model {
@@ -62,6 +91,13 @@ fn init(_) {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
+    ParentSetAttr("board-config", value) -> {
+      let assert Ok(board_config) = decode.run(value, decode.string)
+      let assert Ok(board_config) =
+        json.parse(board_config, board_config.from_json())
+      #(Model(..model, board_config:), effect.none())
+    }
+
     ParentSetAttr("emit-submit", value) -> {
       let assert Ok(on_submit) =
         decode.run(value, decode.optional(decode.string))
@@ -72,6 +108,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let assert Ok(submit_label) = decode.run(value, decode.string)
       #(Model(..model, submit_label:), effect.none())
     }
+
+    ParentSetAttr(_, _) -> panic
 
     UserUpdatedField(field, name) -> #(
       Model(
@@ -91,11 +129,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
       }
-    }
-
-    msg -> {
-      console.log(msg)
-      panic
     }
   }
 }
@@ -141,7 +174,7 @@ fn view(model: Model) -> Element(Msg) {
       ),
     ],
     [
-      h.div([attr.class("w-2/3 max-w-2xl")], [
+      h.div([], [
         h.h1([attr.class("text-center")], [h.text(heading)]),
         text_field(
           "Board name",

@@ -1,4 +1,5 @@
 import {
+  App,
   FileManager,
   Plugin,
   MarkdownPostProcessor,
@@ -58,6 +59,10 @@ export function get_workspace(plugin: Plugin): Workspace {
 
 export function get_file_manager(plugin: Plugin): FileManager {
   return plugin.app.fileManager;
+}
+
+export function get_app(plugin: Plugin): App {
+  return plugin.app;
 }
 
 export function save_data(plugin: Plugin, data: string) {

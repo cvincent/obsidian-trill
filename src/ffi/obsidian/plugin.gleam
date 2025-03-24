@@ -1,3 +1,4 @@
+import ffi/obsidian/app.{type App}
 import ffi/obsidian/file_manager.{type FileManager}
 import ffi/obsidian/html_element.{type Event, type HTMLElement}
 import ffi/obsidian/markdown_post_processor_context.{
@@ -48,6 +49,9 @@ pub fn get_workspace(plugin: Plugin) -> Workspace
 
 @external(javascript, "src/ffi/obsidian/plugin.ts", "get_file_manager")
 pub fn get_file_manager(plugin: Plugin) -> FileManager
+
+@external(javascript, "src/ffi/obsidian/plugin.ts", "get_app")
+pub fn get_app(plugin: Plugin) -> App
 
 @external(javascript, "src/ffi/obsidian/plugin.ts", "save_data")
 pub fn save_data(plugin: Plugin, data: any) -> void
