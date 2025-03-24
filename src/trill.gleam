@@ -393,9 +393,9 @@ fn board_view(model: Model) -> Element(Msg) {
   let assert Ok(null_status_cards) =
     dict.get(board.groups, board_config.null_status)
 
-  let group_keys = case list.length(null_status_cards) {
-    count if count > 0 -> board.group_keys
-    _ ->
+  let group_keys = case null_status_cards {
+    [_card, ..] -> board.group_keys
+    [] ->
       list.filter(board.group_keys, fn(gk) { gk != board_config.null_status })
   }
 
@@ -435,8 +435,8 @@ fn board_view(model: Model) -> Element(Msg) {
       [attr.class("flex h-full")],
       list.map(group_keys, fn(status) {
         let assert Ok(cards) = dict.get(board.groups, status)
-        let column_droppable = case list.length(cards) {
-          0 ->
+        let column_droppable = case cards {
+          [] ->
             event.on("dragover", fn(event) {
               let assert Ok(event) = pevent.cast_event(event)
               Ok(UserDraggedCardOverColumn(event, status))
