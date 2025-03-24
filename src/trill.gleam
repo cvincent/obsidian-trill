@@ -290,7 +290,28 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserClickedDeleteBoard -> {
-      todo
+      #(
+        model,
+        effect.from(fn(_) {
+          let assert Some(board_config) = model.board_config
+
+          modal.with_element(
+            model.obsidian_context.app,
+            h.div([], [
+              h.p([], [
+                h.text(
+                  "Are you sure you want to delete " <> board_config.name <> "?",
+                ),
+              ]),
+              h.div([attr.class("flex justify-end gap-2")], [
+                h.button([], [h.text("Cancel")]),
+                h.button([attr.class("mod-destructive")], [h.text("Delete")]),
+              ]),
+            ]),
+          )
+          Nil
+        }),
+      )
     }
   }
 }
