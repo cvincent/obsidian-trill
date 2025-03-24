@@ -359,6 +359,15 @@ pub fn view(model: Model) -> Element(Msg) {
 fn board_view(model: Model) -> Element(Msg) {
   let assert Some(board) = model.board
 
+  let assert Ok(null_status_cards) =
+    dict.get(board.groups, board_config.null_status)
+
+  let group_keys = case list.length(null_status_cards) {
+    count if count > 0 -> board.group_keys
+    _ ->
+      list.filter(board.group_keys, fn(gk) { gk != board_config.null_status })
+  }
+
   h.div([], [
     h.div([attr.class("flex justify-start mb-2")], [
       h.div(
@@ -373,7 +382,7 @@ fn board_view(model: Model) -> Element(Msg) {
     ]),
     h.div(
       [attr.class("flex h-full")],
-      list.map(board.group_keys, fn(status) {
+      list.map(group_keys, fn(status) {
         let assert Ok(cards) = dict.get(board.groups, status)
         let column_droppable = case list.length(cards) {
           0 ->
