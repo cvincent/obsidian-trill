@@ -395,7 +395,11 @@ fn board_view(model: Model) -> Element(Msg) {
         ],
         list.map(model.board_configs, fn(board_config) {
           h.option(
-            [attr.selected(Some(board_config) == model.board_config)],
+            [
+              attr.selected(Some(board_config) == model.board_config),
+              // TODO: This should be a UUID
+              attr.value(board_config.name),
+            ],
             board_config.name,
           )
         }),
