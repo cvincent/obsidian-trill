@@ -2,12 +2,16 @@ import { App, Modal } from "obsidian";
 
 type ModalCallback = (modal: LustreModal, content_el: HTMLElement) => void;
 
-export function open(
+export function create(
   app: App,
   on_open: ModalCallback,
   on_close: ModalCallback,
 ): LustreModal {
   let modal = new LustreModal(app, on_open, on_close);
+  return modal;
+}
+
+export function open(modal: LustreModal): LustreModal {
   modal.open();
   return modal;
 }

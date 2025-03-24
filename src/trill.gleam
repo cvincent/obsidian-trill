@@ -134,10 +134,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let assert Some(board) = model.board
       let assert Card(page) = card
 
-      #(
-        Model(..model, board: Some(board.start_dragging(board, page))),
-        effect.none(),
-      )
+      #(model, [])
+      |> update_board(board.start_dragging(board, page))
+      |> apply_updates()
     }
 
     UserStoppedDraggingCard(_event) -> {
@@ -193,19 +192,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       let after = bot_dist < top_dist
 
-      #(
-        Model(..model, board: Some(board.drag_over(board, over_page, after))),
-        effect.none(),
-      )
+      #(model, [])
+      |> update_board(board.drag_over(board, over_page, after))
+      |> apply_updates()
     }
 
     UserDraggedCardOverColumn(_event, over_column) -> {
       let assert Some(board) = model.board
 
-      #(
-        Model(..model, board: Some(board.drag_over_column(board, over_column))),
-        effect.none(),
-      )
+      #(model, [])
+      |> update_board(board.drag_over_column(board, over_column))
+      |> apply_updates()
     }
 
     UserSubmittedNewBoardForm(ev) -> {
@@ -216,36 +213,31 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         [new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
-      #(
-        Model(..model, board_configs:)
-          |> select_board_config(new_board_config),
-        effect.from(fn(_) {
-          option.map(model.modal, fn(modal) { modal.close(modal) })
-          save_board_configs(model, board_configs)
-        }),
-      )
+      #(model, [])
+      |> select_board_config(new_board_config)
+      |> close_modal()
+      |> save_board_configs(board_configs)
+      |> apply_updates()
     }
 
     UserClickedBoardMenu(ev) -> {
-      #(
-        model,
-        context_menu.show(ev, [
-          #("New board", "file-plus-2", dispatch(UserClickedNewBoard)),
-          #("Edit board", "pencil", dispatch(UserClickedEditBoard)),
-          #("Delete board", "trash-2", dispatch(UserClickedDeleteBoard)),
-        ]),
-      )
+      #(model, [])
+      |> show_context_menu(ev, [
+        #("New board", "file-plus-2", dispatch(UserClickedNewBoard)),
+        #("Edit board", "pencil", dispatch(UserClickedEditBoard)),
+        #("Delete board", "trash-2", dispatch(UserClickedDeleteBoard)),
+      ])
+      |> apply_updates()
     }
 
     UserClickedEditBoard -> {
-      let modal =
-        board_config_form_modal(
-          model,
-          model.board_config,
-          "user-submitted-edit-board-form",
-          "Save Board",
-        )
-      #(Model(..model, modal: Some(modal)), effect.none())
+      #(model, [])
+      |> show_board_config_form_modal(
+        model.board_config,
+        "user-submitted-edit-board-form",
+        "Save Board",
+      )
+      |> apply_updates()
     }
 
     UserSubmittedEditBoardForm(ev) -> {
@@ -263,30 +255,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           }
         })
 
-      #(
-        model
-          |> select_board_config(updated_board_config)
-          |> close_modal(),
-        effect.from(fn(_) {
-          option.map(model.modal, fn(modal) { modal.close(modal) })
-          save_board_configs(model, board_configs)
-        }),
-      )
+      #(model, [])
+      |> select_board_config(updated_board_config)
+      |> save_board_configs(board_configs)
+      |> close_modal()
+      |> apply_updates()
     }
 
     UserClickedNewBoard -> {
-      let modal =
-        board_config_form_modal(
-          model,
-          None,
-          "user-submitted-new-board-form",
-          "Create Board",
-        )
-      #(Model(..model, modal: Some(modal)), effect.none())
+      #(model, [])
+      |> show_board_config_form_modal(
+        None,
+        "user-submitted-new-board-form",
+        "Create Board",
+      )
+      |> apply_updates()
     }
 
     UserSelectedBoardConfig(board_config) -> {
-      #(select_board_config(model, board_config), effect.none())
+      #(model, [])
+      |> select_board_config(board_config)
+      |> apply_updates()
     }
 
     UserClickedDeleteBoard -> {
@@ -309,7 +298,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               ]),
             ]),
           )
-          Nil
+          |> modal.open()
         }),
       )
     }
@@ -327,33 +316,45 @@ fn board_from_config(board_config: BoardConfig) {
   )
 }
 
-fn save_board_configs(model: Model, board_configs: List(BoardConfig)) {
-  let save_data = board_config.list_to_json(board_configs)
-  plugin.save_data(model.obsidian_context.plugin, save_data)
+type Update =
+  #(Model, List(Effect(Msg)))
+
+fn update_board(update: Update, board) -> Update {
+  let #(model, effects) = update
+  #(Model(..model, board: Some(board)), effects)
 }
 
-fn select_board_config(model, board_config) {
-  Model(
-    ..model,
-    board_config: Some(board_config),
-    board: Some(board_from_config(board_config)),
+fn select_board_config(update: Update, board_config) -> Update {
+  let #(model, effects) = update
+
+  #(
+    Model(
+      ..model,
+      board_config: Some(board_config),
+      board: Some(board_from_config(board_config)),
+    ),
+    effects,
   )
 }
 
-fn close_modal(model) {
-  Model(..model, modal: None)
+fn show_context_menu(
+  update: Update,
+  click_event: Dynamic,
+  menu: List(#(String, String, fn(fn(Msg) -> Nil) -> Nil)),
+) -> Update {
+  let #(model, effects) = update
+  let effect = context_menu.show(click_event, menu)
+  #(model, [effect, ..effects])
 }
 
-fn dispatch(msg: Msg) {
-  fn(dispatch) { dispatch(msg) }
-}
-
-fn board_config_form_modal(
-  model: Model,
+fn show_board_config_form_modal(
+  update: Update,
   board_config: Option(BoardConfig),
   emit_submit: String,
   submit_label: String,
-) {
+) -> Update {
+  let #(model, effects) = update
+
   let form =
     board_config_form.element(
       components.name,
@@ -362,7 +363,45 @@ fn board_config_form_modal(
       submit_label,
     )
 
-  modal.with_element(model.obsidian_context.app, form)
+  let modal = modal.with_element(model.obsidian_context.app, form)
+  let effect = modal.show(modal)
+
+  #(Model(..model, modal: Some(modal)), [effect, ..effects])
+}
+
+fn close_modal(update: Update) -> Update {
+  let #(model, effects) = update
+
+  let effect = case model.modal {
+    Some(modal) -> modal.hide(modal)
+    _ -> effect.none()
+  }
+
+  #(Model(..model, modal: None), [effect, ..effects])
+}
+
+fn save_board_configs(
+  update: Update,
+  board_configs: List(BoardConfig),
+) -> Update {
+  let #(model, effects) = update
+
+  let effect =
+    effect.from(fn(_) {
+      let save_data = board_config.list_to_json(board_configs)
+      plugin.save_data(model.obsidian_context.plugin, save_data)
+    })
+
+  #(Model(..model, board_configs: board_configs), [effect, ..effects])
+}
+
+fn apply_updates(update: Update) -> #(Model, Effect(Msg)) {
+  let #(model, effects) = update
+  #(model, effect.batch(effects))
+}
+
+fn dispatch(msg: Msg) {
+  fn(dispatch) { dispatch(msg) }
 }
 
 pub fn view(model: Model) -> Element(Msg) {
