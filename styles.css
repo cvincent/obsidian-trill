@@ -225,6 +225,9 @@
   .justify-start {
     justify-content: flex-start;
   }
+  .gap-2 {
+    gap: calc(var(--spacing) * 2);
+  }
   .justify-self-center {
     justify-self: center;
   }

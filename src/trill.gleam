@@ -106,6 +106,7 @@ pub type Msg {
   UserSubmittedEditBoardForm(event: Dynamic)
   UserClickedNewBoard
   UserSelectedBoardConfig(board_config: BoardConfig)
+  UserClickedDeleteBoard
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -215,12 +216,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
       #(
-        Model(
-          ..model,
-          board_configs:,
-          board_config: Some(new_board_config),
-          board: Some(board_from_config(new_board_config)),
-        ),
+        Model(..model, board_configs:)
+          |> select_board_config(new_board_config),
         effect.from(fn(_) {
           option.map(model.modal, fn(modal) { modal.close(modal) })
           save_board_configs(model, board_configs)
@@ -232,12 +229,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         model,
         context_menu.show(ev, [
-          #("New board", "file-plus-2", fn(dispatch) {
-            dispatch(UserClickedNewBoard)
-          }),
-          #("Edit board", "pencil", fn(dispatch) {
-            dispatch(UserClickedEditBoard)
-          }),
+          #("New board", "file-plus-2", dispatch(UserClickedNewBoard)),
+          #("Edit board", "pencil", dispatch(UserClickedEditBoard)),
+          #("Delete board", "trash-2", dispatch(UserClickedDeleteBoard)),
         ]),
       )
     }
@@ -269,13 +263,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         })
 
       #(
-        Model(
-          ..model,
-          board_configs:,
-          board_config: Some(updated_board_config),
-          board: Some(board_from_config(updated_board_config)),
-          modal: None,
-        ),
+        model
+          |> select_board_config(updated_board_config)
+          |> close_modal(),
         effect.from(fn(_) {
           option.map(model.modal, fn(modal) { modal.close(modal) })
           save_board_configs(model, board_configs)
@@ -295,14 +285,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserSelectedBoardConfig(board_config) -> {
-      #(
-        Model(
-          ..model,
-          board_config: Some(board_config),
-          board: Some(board_from_config(board_config)),
-        ),
-        effect.none(),
-      )
+      #(select_board_config(model, board_config), effect.none())
+    }
+
+    UserClickedDeleteBoard -> {
+      todo
     }
   }
 }
@@ -321,6 +308,22 @@ fn board_from_config(board_config: BoardConfig) {
 fn save_board_configs(model: Model, board_configs: List(BoardConfig)) {
   let save_data = board_config.list_to_json(board_configs)
   plugin.save_data(model.obsidian_context.plugin, save_data)
+}
+
+fn select_board_config(model, board_config) {
+  Model(
+    ..model,
+    board_config: Some(board_config),
+    board: Some(board_from_config(board_config)),
+  )
+}
+
+fn close_modal(model) {
+  Model(..model, modal: None)
+}
+
+fn dispatch(msg: Msg) {
+  fn(dispatch) { dispatch(msg) }
 }
 
 fn board_config_form_modal(
@@ -383,7 +386,7 @@ fn board_view(model: Model) -> Element(Msg) {
   }
 
   h.div([], [
-    h.div([attr.class("flex justify-start mb-2")], [
+    h.div([attr.class("flex justify-start mb-2 gap-2")], [
       h.select(
         [
           attr.class("dropdown"),
