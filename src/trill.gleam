@@ -104,6 +104,7 @@ pub type Msg {
   UserClickedBoardMenu(event: Dynamic)
   UserClickedEditBoard
   UserSubmittedEditBoardForm(event: Dynamic)
+  UserClickedNewBoard
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -212,8 +213,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         [new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
-      save_board_configs(model, board_configs)
-
       #(
         Model(
           ..model,
@@ -221,7 +220,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           board_config: Some(new_board_config),
           board: Some(new_board_from_config(new_board_config)),
         ),
-        effect.none(),
+        effect.from(fn(_) {
+          option.map(model.modal, fn(modal) { modal.close(modal) })
+          save_board_configs(model, board_configs)
+        }),
       )
     }
 
@@ -229,6 +231,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         model,
         context_menu.show(ev, [
+          #("New board", "file-plus-2", fn(dispatch) {
+            dispatch(UserClickedNewBoard)
+          }),
           #("Edit board", "pencil", fn(dispatch) {
             dispatch(UserClickedEditBoard)
           }),
@@ -237,25 +242,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserClickedEditBoard -> {
-      let form =
-        board_config_form.element(
-          components.name,
+      let modal =
+        board_config_form_modal(
+          model,
           model.board_config,
           "user-submitted-edit-board-form",
           "Save Board",
         )
-        |> element.to_string()
-
-      let modal =
-        modal.open(
-          model.obsidian_context.app,
-          on_open: fn(_modal, content_el) {
-            pelement.set_inner_html(content_el, form)
-            Nil
-          },
-          on_close: fn(_modal, _content_element) { Nil },
-        )
-
       #(Model(..model, modal: Some(modal)), effect.none())
     }
 
@@ -288,6 +281,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         }),
       )
     }
+
+    UserClickedNewBoard -> {
+      let modal =
+        board_config_form_modal(
+          model,
+          None,
+          "user-submitted-new-board-form",
+          "Create Board",
+        )
+      #(Model(..model, modal: Some(modal)), effect.none())
+    }
   }
 }
 
@@ -305,18 +309,50 @@ fn save_board_configs(model: Model, board_configs: List(BoardConfig)) {
   plugin.save_data(model.obsidian_context.plugin, save_data)
 }
 
+fn board_config_form_modal(
+  model: Model,
+  board_config: Option(BoardConfig),
+  emit_submit: String,
+  submit_label: String,
+) {
+  let form =
+    board_config_form.element(
+      components.name,
+      board_config,
+      emit_submit,
+      submit_label,
+    )
+    |> element.to_string()
+
+  modal.open(
+    model.obsidian_context.app,
+    on_open: fn(_modal, content_el) {
+      pelement.set_inner_html(content_el, form)
+      Nil
+    },
+    on_close: fn(_modal, _content_element) { Nil },
+  )
+}
+
 pub fn view(model: Model) -> Element(Msg) {
   case model.board_config {
     Some(_board_config) -> board_view(model)
     None ->
-      h.div([attr.class("w-2/3 max-w-2xl")], [
-        board_config_form.element(
-          components.name,
-          None,
-          "user-submitted-new-board-form",
-          "Create Board",
-        ),
-      ])
+      h.div(
+        [
+          attr.class(
+            "flex w-2/3 max-w-2xl justify-self-center items-center h-full",
+          ),
+        ],
+        [
+          board_config_form.element(
+            components.name,
+            None,
+            "user-submitted-new-board-form",
+            "Create Board",
+          ),
+        ],
+      )
   }
 }
 

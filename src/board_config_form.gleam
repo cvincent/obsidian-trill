@@ -167,39 +167,32 @@ fn view(model: Model) -> Element(Msg) {
     _ -> attr.none()
   }
 
-  h.div(
-    [
-      attr.class(
-        "font-(family-name:--font-text) flex h-full items-center justify-center",
+  h.div([attr.class("font-(family-name:--font-text)")], [
+    h.div([], [
+      h.h1([attr.class("text-center")], [h.text(heading)]),
+      text_field(
+        "Board name",
+        None,
+        model.board_config.name,
+        dict.get(errors, "name"),
+        UserUpdatedField("name", _),
       ),
-    ],
-    [
-      h.div([], [
-        h.h1([attr.class("text-center")], [h.text(heading)]),
-        text_field(
-          "Board name",
-          None,
-          model.board_config.name,
-          dict.get(errors, "name"),
-          UserUpdatedField("name", _),
+      text_field(
+        "Query",
+        Some(
+          "This Dataview query will be used to select what notes to display as cards.",
         ),
-        text_field(
-          "Query",
-          Some(
-            "This Dataview query will be used to select what notes to display as cards.",
-          ),
-          model.board_config.query,
-          dict.get(errors, "query"),
-          UserUpdatedField("query", _),
-        ),
-        h.div([attr.class("flex justify-end mt-4")], [
-          h.button([enabled, event.on_click(UserSubmittedForm)], [
-            h.text(model.submit_label),
-          ]),
+        model.board_config.query,
+        dict.get(errors, "query"),
+        UserUpdatedField("query", _),
+      ),
+      h.div([attr.class("flex justify-end mt-4")], [
+        h.button([enabled, event.on_click(UserSubmittedForm)], [
+          h.text(model.submit_label),
         ]),
       ]),
-    ],
-  )
+    ]),
+  ])
 }
 
 fn text_field(

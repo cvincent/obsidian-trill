@@ -219,14 +219,14 @@
   .items-center {
     align-items: center;
   }
-  .justify-center {
-    justify-content: center;
-  }
   .justify-end {
     justify-content: flex-end;
   }
   .justify-start {
     justify-content: flex-start;
+  }
+  .justify-self-center {
+    justify-self: center;
   }
   .rounded-md {
     border-radius: var(--radius-md);
