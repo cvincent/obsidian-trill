@@ -340,16 +340,8 @@ fn board_config_form_modal(
       emit_submit,
       submit_label,
     )
-    |> element.to_string()
 
-  modal.open(
-    model.obsidian_context.app,
-    on_open: fn(_modal, content_el) {
-      pelement.set_inner_html(content_el, form)
-      Nil
-    },
-    on_close: fn(_modal, _content_element) { Nil },
-  )
+  modal.with_element(model.obsidian_context.app, form)
 }
 
 pub fn view(model: Model) -> Element(Msg) {
