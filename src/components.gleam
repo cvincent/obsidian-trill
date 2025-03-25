@@ -1,4 +1,5 @@
 import board_config_form
+import confirm_modal
 import ffi/plinth_ext/global
 import gleam/float
 import gleam/int
@@ -8,7 +9,7 @@ import gleam/time/timestamp
 
 const namespace = "trill"
 
-const components = [board_config_form.register]
+const components = [board_config_form.register, confirm_modal.register]
 
 const timestamp_key = "components-timestamp"
 

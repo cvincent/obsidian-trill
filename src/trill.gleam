@@ -2,6 +2,7 @@ import board.{type Board, type Card, Card}
 import board_config.{type BoardConfig, BoardConfig}
 import board_config_form
 import components
+import confirm_modal
 import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
@@ -14,7 +15,6 @@ import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
-import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -86,6 +86,14 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
       window.add_event_listener("user-submitted-edit-board-form", fn(ev) {
         dispatch(UserSubmittedEditBoardForm(dynamic.from(ev)))
       })
+
+      window.add_event_listener("user-clicked-delete-board-confirm", fn(_ev) {
+        dispatch(UserClickedDeleteBoardConfirm)
+      })
+
+      window.add_event_listener("user-clicked-delete-board-cancel", fn(_ev) {
+        dispatch(UserClickedDeleteBoardCancel)
+      })
     }),
   )
 }
@@ -108,6 +116,9 @@ pub type Msg {
 
   UserSubmittedNewBoardForm(event: Dynamic)
   UserSubmittedEditBoardForm(event: Dynamic)
+
+  UserClickedDeleteBoardCancel
+  UserClickedDeleteBoardConfirm
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -186,7 +197,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     UserSelectedBoardConfig(board_config) -> {
       #(model, [])
-      |> select_board_config(board_config)
+      |> select_board_config(Some(board_config))
       |> apply_updates()
     }
 
@@ -221,27 +232,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserClickedDeleteBoard -> {
-      #(
-        model,
-        effect.from(fn(_) {
-          let assert Some(board_config) = model.board_config
+      let assert Some(board_config) = model.board_config
 
-          modal.with_element(
-            model.obsidian_context.app,
-            h.div([], [
-              h.p([], [
-                h.text(
-                  "Are you sure you want to delete " <> board_config.name <> "?",
-                ),
-              ]),
-              h.div([attr.class("flex justify-end gap-2")], [
-                h.button([], [h.text("Cancel")]),
-                h.button([attr.class("mod-destructive")], [h.text("Delete")]),
-              ]),
-            ]),
-          )
-          |> modal.open()
-        }),
+      let modal =
+        confirm_modal.element(
+          components.name,
+          "Are you sure you want to delete " <> board_config.name <> "?",
+          "Delete",
+          "user-clicked-delete-board-confirm",
+          "user-clicked-delete-board-cancel",
+        )
+      let modal = modal.with_element(model.obsidian_context.app, modal)
+
+      #(
+        Model(..model, modal: Some(modal)),
+        effect.from(fn(_) { modal.open(modal) }),
       )
     }
 
@@ -254,7 +259,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
       #(model, [])
-      |> select_board_config(new_board_config)
+      |> select_board_config(Some(new_board_config))
       |> close_modal()
       |> save_board_configs(board_configs)
       |> apply_updates()
@@ -276,8 +281,31 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         })
 
       #(model, [])
-      |> select_board_config(updated_board_config)
+      |> select_board_config(Some(updated_board_config))
       |> save_board_configs(board_configs)
+      |> close_modal()
+      |> apply_updates()
+    }
+
+    UserClickedDeleteBoardConfirm -> {
+      let assert Some(current_board_config) = model.board_config
+      let new_board_configs =
+        list.filter(model.board_configs, fn(bc) { bc != current_board_config })
+
+      let new_current_board_config =
+        new_board_configs
+        |> list.first()
+        |> option.from_result()
+
+      #(model, [])
+      |> select_board_config(new_current_board_config)
+      |> save_board_configs(new_board_configs)
+      |> close_modal()
+      |> apply_updates()
+    }
+
+    UserClickedDeleteBoardCancel -> {
+      #(model, [])
       |> close_modal()
       |> apply_updates()
     }
@@ -303,14 +331,19 @@ fn update_board(update: Update, board) -> Update {
   #(Model(..model, board: Some(board)), effects)
 }
 
-fn select_board_config(update: Update, board_config) -> Update {
+fn select_board_config(
+  update: Update,
+  board_config: Option(BoardConfig),
+) -> Update {
   let #(model, effects) = update
 
   #(
     Model(
       ..model,
-      board_config: Some(board_config),
-      board: Some(board_from_config(board_config)),
+      board_config: board_config,
+      board: option.map(board_config, fn(board_config) {
+        board_from_config(board_config)
+      }),
     ),
     effects,
   )
@@ -427,7 +460,7 @@ pub fn view(model: Model) -> Element(Msg) {
   }
 }
 
-fn blank_view(model: Model) -> Element(Msg) {
+fn blank_view(_model: Model) -> Element(Msg) {
   h.div(
     [attr.class("flex w-2/3 max-w-2xl justify-self-center items-center h-full")],
     [
