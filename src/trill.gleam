@@ -93,18 +93,21 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
 pub type Msg {
   UserClickedInternalLink(path: String)
   UserHoveredInternalLink(event: Dynamic, path: String)
+
   UserStartedDraggingCard(event: Dynamic, card: Card(Page))
   UserStoppedDraggingCard(event: Dynamic)
   UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
   UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
 
-  UserSubmittedNewBoardForm(event: Dynamic)
-  UserClickedBoardMenu(event: Dynamic)
-  UserClickedEditBoard
-  UserSubmittedEditBoardForm(event: Dynamic)
-  UserClickedNewBoard
   UserSelectedBoardConfig(board_config: BoardConfig)
+
+  UserClickedBoardMenu(event: Dynamic)
+  UserClickedNewBoard
+  UserClickedEditBoard
   UserClickedDeleteBoard
+
+  UserSubmittedNewBoardForm(event: Dynamic)
+  UserSubmittedEditBoardForm(event: Dynamic)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -181,18 +184,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> apply_updates()
     }
 
-    UserSubmittedNewBoardForm(ev) -> {
-      let assert Ok(new_board_config) =
-        decode.run(ev, decode.at(["detail"], board_config.from_json()))
-
-      let board_configs =
-        [new_board_config, ..model.board_configs]
-        |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
-
+    UserSelectedBoardConfig(board_config) -> {
       #(model, [])
-      |> select_board_config(new_board_config)
-      |> close_modal()
-      |> save_board_configs(board_configs)
+      |> select_board_config(board_config)
       |> apply_updates()
     }
 
@@ -206,38 +200,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> apply_updates()
     }
 
-    UserClickedEditBoard -> {
-      #(model, [])
-      |> show_board_config_form_modal(
-        model.board_config,
-        "user-submitted-edit-board-form",
-        "Save Board",
-      )
-      |> apply_updates()
-    }
-
-    UserSubmittedEditBoardForm(ev) -> {
-      let assert Some(current_board_config) = model.board_config
-
-      let assert Ok(updated_board_config) =
-        decode.run(ev, decode.at(["detail"], board_config.from_json()))
-
-      let board_configs =
-        model.board_configs
-        |> list.map(fn(bc) {
-          case bc {
-            bc if bc == current_board_config -> updated_board_config
-            bc -> bc
-          }
-        })
-
-      #(model, [])
-      |> select_board_config(updated_board_config)
-      |> save_board_configs(board_configs)
-      |> close_modal()
-      |> apply_updates()
-    }
-
     UserClickedNewBoard -> {
       #(model, [])
       |> show_board_config_form_modal(
@@ -248,9 +210,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> apply_updates()
     }
 
-    UserSelectedBoardConfig(board_config) -> {
+    UserClickedEditBoard -> {
       #(model, [])
-      |> select_board_config(board_config)
+      |> show_board_config_form_modal(
+        model.board_config,
+        "user-submitted-edit-board-form",
+        "Save Board",
+      )
       |> apply_updates()
     }
 
@@ -277,6 +243,43 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           |> modal.open()
         }),
       )
+    }
+
+    UserSubmittedNewBoardForm(ev) -> {
+      let assert Ok(new_board_config) =
+        decode.run(ev, decode.at(["detail"], board_config.from_json()))
+
+      let board_configs =
+        [new_board_config, ..model.board_configs]
+        |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
+
+      #(model, [])
+      |> select_board_config(new_board_config)
+      |> close_modal()
+      |> save_board_configs(board_configs)
+      |> apply_updates()
+    }
+
+    UserSubmittedEditBoardForm(ev) -> {
+      let assert Some(current_board_config) = model.board_config
+
+      let assert Ok(updated_board_config) =
+        decode.run(ev, decode.at(["detail"], board_config.from_json()))
+
+      let board_configs =
+        model.board_configs
+        |> list.map(fn(bc) {
+          case bc {
+            bc if bc == current_board_config -> updated_board_config
+            bc -> bc
+          }
+        })
+
+      #(model, [])
+      |> select_board_config(updated_board_config)
+      |> save_board_configs(board_configs)
+      |> close_modal()
+      |> apply_updates()
     }
   }
 }
