@@ -423,23 +423,22 @@ fn apply_updates(update: Update) -> #(Model, Effect(Msg)) {
 pub fn view(model: Model) -> Element(Msg) {
   case model.board_config {
     Some(_board_config) -> board_view(model)
-    None ->
-      h.div(
-        [
-          attr.class(
-            "flex w-2/3 max-w-2xl justify-self-center items-center h-full",
-          ),
-        ],
-        [
-          board_config_form.element(
-            components.name,
-            None,
-            "user-submitted-new-board-form",
-            "Create Board",
-          ),
-        ],
-      )
+    None -> blank_view(model)
   }
+}
+
+fn blank_view(model: Model) -> Element(Msg) {
+  h.div(
+    [attr.class("flex w-2/3 max-w-2xl justify-self-center items-center h-full")],
+    [
+      board_config_form.element(
+        components.name,
+        None,
+        "user-submitted-new-board-form",
+        "Create Board",
+      ),
+    ],
+  )
 }
 
 fn board_view(model: Model) -> Element(Msg) {
