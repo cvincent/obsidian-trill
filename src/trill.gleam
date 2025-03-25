@@ -5,10 +5,8 @@ import components
 import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
-import ffi/obsidian/file_manager
 import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
-import ffi/obsidian/vault
 import ffi/obsidian/workspace
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
@@ -144,32 +142,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let assert Some(Card(page)) = board.dragging
       let #(board, new_status) = board.drop(board)
 
-      let effect = case new_status == board.group_key_fn(page) {
-        True -> effect.none()
-        False ->
-          effect.from(fn(_) {
-            // TODO: Encapsulate setting a single Frontmatter property
-            case
-              vault.get_file_by_path(model.obsidian_context.vault, page.path)
-            {
-              Error(_) -> Nil
-              Ok(file) ->
-                file_manager.process_front_matter(
-                  model.obsidian_context.file_manager,
-                  file,
-                  fn(_yaml) {
-                    case new_status == board_config.null_status {
-                      True -> [#("status", None)]
-                      False -> [#("status", Some(new_status))]
-                    }
-                  },
-                )
-            }
-            Nil
-          })
-      }
-
-      #(Model(..model, board: Some(board)), effect)
+      #(model, [])
+      |> update_board(board)
+      |> maybe_write_new_status(page, new_status)
+      |> apply_updates()
     }
 
     UserDraggedCardOverTarget(event, over_card) -> {
@@ -393,6 +369,35 @@ fn save_board_configs(
     })
 
   #(Model(..model, board_configs: board_configs), [effect, ..effects])
+}
+
+fn maybe_write_new_status(
+  update: Update,
+  page: Page,
+  new_status: String,
+) -> Update {
+  let #(model, effects) = update
+  let assert Some(board) = model.board
+
+  let effect = case new_status == board.group_key_fn(page) {
+    True -> effect.none()
+    False ->
+      effect.from(fn(_) {
+        let new_status = case new_status {
+          new_status if new_status == board_config.null_status -> None
+          new_status -> Some(new_status)
+        }
+
+        obsidian_context.set_front_matter(
+          model.obsidian_context,
+          page.path,
+          "status",
+          new_status,
+        )
+      })
+  }
+
+  #(model, [effect, ..effects])
 }
 
 fn apply_updates(update: Update) -> #(Model, Effect(Msg)) {
