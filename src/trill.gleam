@@ -565,78 +565,69 @@ fn board_view(model: Model) -> Element(Msg) {
 
         h.div(
           [attr.class("min-w-80 max-w-80 mr-4 height-full"), column_droppable],
-          {
-            list.append(
-              [h.div([attr.class("mb-2")], [h.text(status)])],
-              list.map(cards, fn(card) {
-                let page = card.inner
+          list.append(
+            [h.div([attr.class("mb-2")], [h.text(status)])],
+            list.map(cards, fn(card) {
+              let page = card.inner
 
-                let invisible = case card {
-                  Card(_) -> ""
-                  _ -> "invisible"
-                }
+              let invisible = case card {
+                Card(_) -> ""
+                _ -> "invisible"
+              }
 
-                let dragover = case card {
-                  Card(_) ->
-                    event.on("dragover", fn(ev) {
-                      let assert Ok(ev) = pevent.cast_event(ev)
-                      Ok(UserDraggedCardOverTarget(ev, card))
-                    })
+              let dragover = case card {
+                Card(_) ->
+                  event.on("dragover", fn(ev) {
+                    let assert Ok(ev) = pevent.cast_event(ev)
+                    Ok(UserDraggedCardOverTarget(ev, card))
+                  })
 
-                  _ -> attr.none()
-                }
+                _ -> attr.none()
+              }
 
-                h.div(
-                  [
-                    attr.class(
-                      "bg-(--background-secondary) mb-2 p-4 rounded-md",
-                    ),
-                    attr.attribute("draggable", "true"),
-                    event.on("dragstart", fn(ev) {
-                      Ok(UserStartedDraggingCard(ev, card))
-                    }),
-                    event.on("dragend", fn(ev) {
-                      Ok(UserStoppedDraggingCard(ev))
-                    }),
-                    dragover,
-                  ],
-                  [
-                    h.a(
-                      [
-                        attr.class("internal-link"),
-                        attr.class(invisible),
-                        attr.href(page.path),
-                        event.on_click(UserClickedInternalLink(page.path)),
-                        event.on("mouseover", fn(ev) {
-                          Ok(UserHoveredInternalLink(ev, page.path))
-                        }),
-                      ],
-                      [h.text(page.title)],
-                    ),
-                    h.div([attr.class(invisible)], [h.text(page.path)]),
-                    h.div([attr.class(invisible)], [
-                      h.text(result.unwrap(
-                        page.status,
-                        board_config.null_status,
-                      )),
-                    ]),
-                  ],
-                )
-              })
-                |> list.append([
-                  h.div(
+              h.div(
+                [
+                  attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
+                  attr.attribute("draggable", "true"),
+                  event.on("dragstart", fn(ev) {
+                    Ok(UserStartedDraggingCard(ev, card))
+                  }),
+                  event.on("dragend", fn(ev) { Ok(UserStoppedDraggingCard(ev)) }),
+                  dragover,
+                ],
+                [
+                  h.a(
                     [
-                      attr.class("h-full"),
-                      event.on("dragover", fn(ev) {
-                        let assert Ok(ev) = pevent.cast_event(ev)
-                        Ok(UserDraggedCardOverColumn(ev, status))
+                      attr.class("internal-link"),
+                      attr.class(invisible),
+                      attr.href(page.path),
+                      event.on_click(UserClickedInternalLink(page.path)),
+                      event.on("mouseover", fn(ev) {
+                        Ok(UserHoveredInternalLink(ev, page.path))
                       }),
                     ],
-                    [],
+                    [h.text(page.title)],
                   ),
-                ]),
-            )
-          },
+                  h.div([attr.class(invisible)], [h.text(page.path)]),
+                  h.div([attr.class(invisible)], [
+                    h.text(result.unwrap(page.status, board_config.null_status)),
+                  ]),
+                ],
+              )
+            })
+              |> list.append([
+                h.div(
+                  [
+                    attr.class("h-full"),
+                    event.on("dragover", fn(ev) {
+                      let assert Ok(ev) = pevent.cast_event(ev)
+                      Ok(UserDraggedCardOverColumn(ev, status))
+                    }),
+                  ],
+                  [],
+                ),
+              ]),
+          ),
         )
       }),
     ),
