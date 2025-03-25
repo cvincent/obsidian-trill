@@ -570,6 +570,51 @@ fn board_view(model: Model) -> Element(Msg) {
             list.map(cards, fn(card) {
               let page = card.inner
 
+              let tasks =
+                decode.run(
+                  dynamic.from(page),
+                  decode.at(
+                    ["original", "file", "tasks"],
+                    decode.list(decode.dynamic),
+                  ),
+                )
+
+              let task_count =
+                result.try(tasks, fn(tasks) { Ok(list.length(tasks)) })
+                |> result.unwrap(0)
+
+              let done_count =
+                result.try(tasks, fn(tasks) {
+                  list.count(tasks, fn(task) {
+                    Ok("x")
+                    == decode.run(task, decode.at(["status"], decode.string))
+                  })
+                  |> Ok()
+                })
+                |> result.unwrap(0)
+
+              let task_info_color = case task_count - done_count {
+                0 -> attr.class("text-(color:--text-muted)")
+                _ -> attr.none()
+              }
+
+              let task_info = case task_count {
+                task_count if task_count > 0 ->
+                  h.div([attr.class("flex gap-1"), task_info_color], [
+                    h.div([attr.class("[--icon-size:var(--icon-s)] mt-[1px]")], [
+                      icons.icon("square-check"),
+                    ]),
+                    h.div([attr.class("align-middle")], [
+                      h.text(
+                        int.to_string(done_count)
+                        <> "/"
+                        <> int.to_string(task_count),
+                      ),
+                    ]),
+                  ])
+                _ -> element.none()
+              }
+
               let invisible = case card {
                 Card(_) -> ""
                 _ -> "invisible"
@@ -596,21 +641,19 @@ fn board_view(model: Model) -> Element(Msg) {
                   dragover,
                 ],
                 [
-                  h.a(
-                    [
-                      attr.class("internal-link"),
-                      attr.class(invisible),
-                      attr.href(page.path),
-                      event.on_click(UserClickedInternalLink(page.path)),
-                      event.on("mouseover", fn(ev) {
-                        Ok(UserHoveredInternalLink(ev, page.path))
-                      }),
-                    ],
-                    [h.text(page.title)],
-                  ),
-                  h.div([attr.class(invisible)], [h.text(page.path)]),
                   h.div([attr.class(invisible)], [
-                    h.text(result.unwrap(page.status, board_config.null_status)),
+                    h.a(
+                      [
+                        attr.class("internal-link"),
+                        attr.href(page.path),
+                        event.on_click(UserClickedInternalLink(page.path)),
+                        event.on("mouseover", fn(ev) {
+                          Ok(UserHoveredInternalLink(ev, page.path))
+                        }),
+                      ],
+                      [h.text(page.title)],
+                    ),
+                    task_info,
                   ]),
                 ],
               )

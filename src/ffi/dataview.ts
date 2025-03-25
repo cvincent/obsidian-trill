@@ -11,10 +11,12 @@ export function pages(query: string): List<Page> {
     dv()
       .pages(query)
       .map((p: any) => {
+        console.log(p);
         return {
           title: p.title || p.file.path,
           path: p.file.path,
           status: p.status ? new Ok(p.status) : new Error("none"),
+          original: p,
         };
       }),
   );
