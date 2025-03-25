@@ -345,8 +345,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-// TODO: Listen for changes from Obsidian and update
-
 fn board_from_config(board_config: BoardConfig) {
   board.new_board(
     group_keys: board_config.statuses,
