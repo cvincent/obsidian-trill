@@ -30,11 +30,3 @@ pub fn open(modal: Modal) -> Nil
 
 @external(javascript, "src/ffi/obsidian/modal.ts", "close")
 pub fn close(modal: Modal) -> Nil
-
-pub fn show(modal: Modal) -> Effect(msg) {
-  effect.from(fn(_) { open(modal) })
-}
-
-pub fn hide(modal: Modal) -> Effect(msg) {
-  effect.from(fn(_) { close(modal) })
-}

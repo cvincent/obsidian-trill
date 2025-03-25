@@ -193,9 +193,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UserClickedBoardMenu(ev) -> {
       #(model, [])
       |> show_context_menu(ev, [
-        #("New board", "file-plus-2", dispatch(UserClickedNewBoard)),
-        #("Edit board", "pencil", dispatch(UserClickedEditBoard)),
-        #("Delete board", "trash-2", dispatch(UserClickedDeleteBoard)),
+        #("New board", "file-plus-2", UserClickedNewBoard),
+        #("Edit board", "pencil", UserClickedEditBoard),
+        #("Delete board", "trash-2", UserClickedDeleteBoard),
       ])
       |> apply_updates()
     }
@@ -319,10 +319,22 @@ fn select_board_config(update: Update, board_config) -> Update {
 fn show_context_menu(
   update: Update,
   click_event: Dynamic,
-  menu: List(#(String, String, fn(fn(Msg) -> Nil) -> Nil)),
+  menu: List(#(String, String, Msg)),
 ) -> Update {
   let #(model, effects) = update
-  let effect = context_menu.show(click_event, menu)
+
+  let effect =
+    effect.from(fn(disp) {
+      let menu =
+        menu
+        |> list.map(fn(item) {
+          let #(name, icon, msg) = item
+          #(name, icon, fn() { disp(msg) })
+        })
+      context_menu.show(click_event, menu)
+      Nil
+    })
+
   #(model, [effect, ..effects])
 }
 
@@ -343,7 +355,7 @@ fn show_board_config_form_modal(
     )
 
   let modal = modal.with_element(model.obsidian_context.app, form)
-  let effect = modal.show(modal)
+  let effect = effect.from(fn(_) { modal.open(modal) })
 
   #(Model(..model, modal: Some(modal)), [effect, ..effects])
 }
@@ -352,7 +364,7 @@ fn close_modal(update: Update) -> Update {
   let #(model, effects) = update
 
   let effect = case model.modal {
-    Some(modal) -> modal.hide(modal)
+    Some(modal) -> effect.from(fn(_) { modal.close(modal) })
     _ -> effect.none()
   }
 
@@ -406,10 +418,6 @@ fn maybe_write_new_status(
 fn apply_updates(update: Update) -> #(Model, Effect(Msg)) {
   let #(model, effects) = update
   #(model, effect.batch(effects))
-}
-
-fn dispatch(msg: Msg) {
-  fn(dispatch) { dispatch(msg) }
 }
 
 pub fn view(model: Model) -> Element(Msg) {
