@@ -6,11 +6,14 @@ import confirm_modal
 import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
+import ffi/obsidian/file.{type File}
 import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
+import ffi/obsidian/vault
 import ffi/obsidian/workspace
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
+import ffi/plinth_ext/global
 import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
@@ -30,6 +33,7 @@ import obsidian_context.{type ObsidianContext}
 import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
 import plinth/browser/window
+import plinth/javascript/global as pglobal
 
 pub const view_name = "trill"
 
@@ -94,6 +98,22 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
       window.add_event_listener("user-clicked-delete-board-cancel", fn(_ev) {
         dispatch(UserClickedDeleteBoardCancel)
       })
+
+      ["create", "modify", "delete", "rename"]
+      |> list.each(fn(event) {
+        vault.on(model.obsidian_context.vault, event, fn(_file) {
+          let _ =
+            global.get_timer_id("file-changed-debounce")
+            |> result.try(fn(id) { pglobal.clear_timeout(id) |> Ok() })
+
+          let id =
+            pglobal.set_timeout(500, fn() {
+              dispatch(ObsidianReportedFileChange)
+            })
+
+          global.set_global("file-changed-debounce", id)
+        })
+      })
     }),
   )
 }
@@ -119,6 +139,8 @@ pub type Msg {
 
   UserClickedDeleteBoardCancel
   UserClickedDeleteBoardConfirm
+
+  ObsidianReportedFileChange
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -308,6 +330,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, [])
       |> close_modal()
       |> apply_updates()
+    }
+
+    ObsidianReportedFileChange -> {
+      case model.board_config {
+        Some(board_config) ->
+          #(model, [])
+          |> update_board(board_from_config(board_config))
+          |> apply_updates()
+
+        _ -> #(model, effect.none())
+      }
     }
   }
 }
