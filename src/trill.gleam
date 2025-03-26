@@ -72,13 +72,14 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
     |> result.map(fn(board_config) { Some(board_config) })
     |> result.unwrap(None)
 
-  let board =
-    option.map(board_config, fn(board_config) {
-      board_from_config(board_config)
-    })
-
   let model =
-    Model(board_configs:, board_config:, board:, obsidian_context:, modal: None)
+    Model(
+      board_configs:,
+      board_config:,
+      obsidian_context:,
+      board: None,
+      modal: None,
+    )
 
   #(
     model,
@@ -116,6 +117,7 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
       })
     }),
   )
+  |> select_board_config(board_config)
 }
 
 pub type Msg {
@@ -323,21 +325,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.board_config {
         Some(board_config) ->
           #(model, effect.none())
-          |> update_board(board_from_config(board_config))
+          |> select_board_config(Some(board_config))
 
         _ -> #(model, effect.none())
       }
     }
   }
-}
-
-fn board_from_config(board_config: BoardConfig) {
-  board.new_board(
-    group_keys: board_config.statuses,
-    cards: dataview.pages(board_config.query),
-    group_key_fn:,
-    update_group_key_fn:,
-  )
 }
 
 type Update =
@@ -354,16 +347,17 @@ fn select_board_config(
 ) -> Update {
   let #(model, effects) = update
 
-  #(
-    Model(
-      ..model,
-      board_config: board_config,
-      board: option.map(board_config, fn(board_config) {
-        board_from_config(board_config)
-      }),
-    ),
-    effects,
-  )
+  let board =
+    option.map(board_config, fn(board_config) {
+      board.new_board(
+        group_keys: board_config.statuses,
+        cards: dataview.pages(board_config.query),
+        group_key_fn:,
+        update_group_key_fn:,
+      )
+    })
+
+  #(Model(..model, board_config: board_config, board: board), effects)
 }
 
 fn show_context_menu(

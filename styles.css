@@ -198,6 +198,9 @@
   .mb-2 {
     margin-bottom: calc(var(--spacing) * 2);
   }
+  .contents {
+    display: contents;
+  }
   .flex {
     display: flex;
   }
