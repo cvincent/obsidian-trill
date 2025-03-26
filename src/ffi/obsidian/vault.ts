@@ -18,6 +18,14 @@ export function get_file_by_path(
   else return new Error(null);
 }
 
+export function cached_read(
+  vault: Vault,
+  file: TFile,
+  callback: (contents: string) => string,
+): Promise<string> {
+  return vault.cachedRead(file);
+}
+
 export function on(
   vault: Vault,
   event: any,
