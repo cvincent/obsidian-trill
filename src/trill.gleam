@@ -168,9 +168,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let assert Some(board) = model.board
       let assert Card(page) = card
 
-      #(model, [])
+      #(model, effect.none())
       |> update_board(board.start_dragging(board, page))
-      |> apply_updates()
     }
 
     UserStoppedDraggingCard(_event) -> {
@@ -178,10 +177,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let assert Some(Card(page)) = board.dragging
       let #(board, new_status) = board.drop(board)
 
-      #(model, [])
+      #(model, effect.none())
       |> update_board(board)
       |> maybe_write_new_status(page, new_status)
-      |> apply_updates()
     }
 
     UserDraggedCardOverTarget(event, over_card) -> {
@@ -204,53 +202,46 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       let after = bot_dist < top_dist
 
-      #(model, [])
+      #(model, effect.none())
       |> update_board(board.drag_over(board, over_page, after))
-      |> apply_updates()
     }
-
     UserDraggedCardOverColumn(_event, over_column) -> {
       let assert Some(board) = model.board
 
-      #(model, [])
+      #(model, effect.none())
       |> update_board(board.drag_over_column(board, over_column))
-      |> apply_updates()
     }
 
     UserSelectedBoardConfig(board_config) -> {
-      #(model, [])
+      #(model, effect.none())
       |> select_board_config(Some(board_config))
-      |> apply_updates()
     }
 
     UserClickedBoardMenu(ev) -> {
-      #(model, [])
+      #(model, effect.none())
       |> show_context_menu(ev, [
         #("New board", "file-plus-2", UserClickedNewBoard),
         #("Edit board", "pencil", UserClickedEditBoard),
         #("Delete board", "trash-2", UserClickedDeleteBoard),
       ])
-      |> apply_updates()
     }
 
     UserClickedNewBoard -> {
-      #(model, [])
+      #(model, effect.none())
       |> show_board_config_form_modal(
         None,
         "user-submitted-new-board-form",
         "Create Board",
       )
-      |> apply_updates()
     }
 
     UserClickedEditBoard -> {
-      #(model, [])
+      #(model, effect.none())
       |> show_board_config_form_modal(
         model.board_config,
         "user-submitted-edit-board-form",
         "Save Board",
       )
-      |> apply_updates()
     }
 
     UserClickedDeleteBoard -> {
@@ -280,11 +271,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         [new_board_config, ..model.board_configs]
         |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
 
-      #(model, [])
+      #(model, effect.none())
       |> select_board_config(Some(new_board_config))
       |> close_modal()
       |> save_board_configs(board_configs)
-      |> apply_updates()
     }
 
     UserSubmittedEditBoardForm(ev) -> {
@@ -302,11 +292,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           }
         })
 
-      #(model, [])
+      #(model, effect.none())
       |> select_board_config(Some(updated_board_config))
       |> save_board_configs(board_configs)
       |> close_modal()
-      |> apply_updates()
     }
 
     UserClickedDeleteBoardConfirm -> {
@@ -319,25 +308,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         |> list.first()
         |> option.from_result()
 
-      #(model, [])
+      #(model, effect.none())
       |> select_board_config(new_current_board_config)
       |> save_board_configs(new_board_configs)
       |> close_modal()
-      |> apply_updates()
     }
 
     UserClickedDeleteBoardCancel -> {
-      #(model, [])
+      #(model, effect.none())
       |> close_modal()
-      |> apply_updates()
     }
 
     ObsidianReportedFileChange -> {
       case model.board_config {
         Some(board_config) ->
-          #(model, [])
+          #(model, effect.none())
           |> update_board(board_from_config(board_config))
-          |> apply_updates()
 
         _ -> #(model, effect.none())
       }
@@ -355,7 +341,7 @@ fn board_from_config(board_config: BoardConfig) {
 }
 
 type Update =
-  #(Model, List(Effect(Msg)))
+  #(Model, Effect(Msg))
 
 fn update_board(update: Update, board) -> Update {
   let #(model, effects) = update
@@ -399,7 +385,7 @@ fn show_context_menu(
       Nil
     })
 
-  #(model, [effect, ..effects])
+  #(model, effect.batch([effect, effects]))
 }
 
 fn show_board_config_form_modal(
@@ -421,7 +407,7 @@ fn show_board_config_form_modal(
   let modal = modal.with_element(model.obsidian_context.app, form)
   let effect = effect.from(fn(_) { modal.open(modal) })
 
-  #(Model(..model, modal: Some(modal)), [effect, ..effects])
+  #(Model(..model, modal: Some(modal)), effect.batch([effect, effects]))
 }
 
 fn close_modal(update: Update) -> Update {
@@ -432,7 +418,7 @@ fn close_modal(update: Update) -> Update {
     _ -> effect.none()
   }
 
-  #(Model(..model, modal: None), [effect, ..effects])
+  #(Model(..model, modal: None), effect.batch([effect, effects]))
 }
 
 fn save_board_configs(
@@ -447,7 +433,10 @@ fn save_board_configs(
       plugin.save_data(model.obsidian_context.plugin, save_data)
     })
 
-  #(Model(..model, board_configs: board_configs), [effect, ..effects])
+  #(
+    Model(..model, board_configs: board_configs),
+    effect.batch([effect, effects]),
+  )
 }
 
 fn maybe_write_new_status(
@@ -476,12 +465,7 @@ fn maybe_write_new_status(
       })
   }
 
-  #(model, [effect, ..effects])
-}
-
-fn apply_updates(update: Update) -> #(Model, Effect(Msg)) {
-  let #(model, effects) = update
-  #(model, effect.batch(effects))
+  #(model, effect.batch([effect, effects]))
 }
 
 pub fn view(model: Model) -> Element(Msg) {
