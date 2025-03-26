@@ -41,3 +41,6 @@ pub fn trigger_hover_link(
   view_name: String,
   source_path: String,
 ) -> Nil
+
+@external(javascript, "src/ffi/obsidian/workspace.ts", "on_layout_ready")
+pub fn on_layout_ready(workspace: Workspace, callback: fn() -> Nil) -> Nil

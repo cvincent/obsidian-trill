@@ -23,6 +23,8 @@ pub fn main(plugin: Plugin) {
       workspace: plugin.get_workspace(plugin),
     )
 
+  use <- workspace.on_layout_ready(obsidian_context.workspace)
+
   plugin.register_view(
     plugin,
     trill.view_name,
