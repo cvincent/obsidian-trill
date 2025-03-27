@@ -198,6 +198,17 @@ pub fn drop(board: Board(group, inner)) {
   #(Board(..board, groups:, dragging: None), new_gk)
 }
 
+pub fn update_cards(
+  board: Board(group, inner),
+  func: fn(Card(inner)) -> Card(inner),
+) {
+  let groups =
+    dict.map_values(board.groups, fn(_gk, group_cards) {
+      list.map(group_cards, func)
+    })
+  Board(..board, groups: groups)
+}
+
 fn gk_and_group_cards(board: Board(group, inner), card: inner) {
   let gk = board.group_key_fn(card)
   let assert Ok(group_cards) = dict.get(board.groups, gk)

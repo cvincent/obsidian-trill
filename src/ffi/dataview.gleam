@@ -1,4 +1,5 @@
 import gleam/dynamic.{type Dynamic}
+import gleam/option.{type Option}
 
 pub type Page {
   Page(
@@ -6,6 +7,7 @@ pub type Page {
     path: String,
     status: Result(String, String),
     original: Dynamic,
+    content: Option(String),
   )
 }
 

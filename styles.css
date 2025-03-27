@@ -198,6 +198,9 @@
   .mb-2 {
     margin-bottom: calc(var(--spacing) * 2);
   }
+  .\[display\:-webkit-box\] {
+    display: -webkit-box;
+  }
   .contents {
     display: contents;
   }
@@ -240,6 +243,9 @@
   .justify-self-center {
     justify-self: center;
   }
+  .overflow-hidden {
+    overflow: hidden;
+  }
   .rounded-md {
     border-radius: var(--radius-md);
   }
@@ -272,5 +278,11 @@
   }
   .\[--icon-stroke\:var\(--icon-s-stroke-width\)\] {
     --icon-stroke: var(--icon-s-stroke-width);
+  }
+  .\[-webkit-box-orient\:vertical\] {
+    -webkit-box-orient: vertical;
+  }
+  .\[-webkit-line-clamp\:3\] {
+    -webkit-line-clamp: 3;
   }
 }

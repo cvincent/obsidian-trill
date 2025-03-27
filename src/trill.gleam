@@ -6,7 +6,6 @@ import confirm_modal
 import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
-import ffi/obsidian/file.{type File}
 import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
@@ -14,12 +13,14 @@ import ffi/obsidian/workspace
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
 import ffi/plinth_ext/global
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
+import gleam/javascript/promise
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/regexp
 import gleam/result
 import gleam/string
 import icons
@@ -130,6 +131,7 @@ pub type Msg {
   UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
 
   UserSelectedBoardConfig(board_config: BoardConfig)
+  ObsidianReadPageContents(contents: Dict(String, String))
 
   UserClickedBoardMenu(event: Dynamic)
   UserClickedNewBoard
@@ -217,6 +219,23 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UserSelectedBoardConfig(board_config) -> {
       #(model, effect.none())
       |> select_board_config(Some(board_config))
+    }
+
+    ObsidianReadPageContents(contents) -> {
+      let assert Some(board) = model.board
+
+      let board =
+        board.update_cards(board, fn(card) {
+          let assert Card(page) = card
+          let content =
+            page.path
+            |> dict.get(contents, _)
+            |> option.from_result()
+          Card(Page(..page, content: content))
+        })
+
+      #(model, effect.none())
+      |> update_board(board)
     }
 
     UserClickedBoardMenu(ev) -> {
@@ -347,17 +366,43 @@ fn select_board_config(
 ) -> Update {
   let #(model, effects) = update
 
-  let board =
+  let assert Some(#(board, effect)) =
     option.map(board_config, fn(board_config) {
-      board.new_board(
-        group_keys: board_config.statuses,
-        cards: dataview.pages(board_config.query),
-        group_key_fn:,
-        update_group_key_fn:,
-      )
+      let pages = dataview.pages(board_config.query)
+
+      let effect =
+        effect.from(fn(dispatch) {
+          list.map(pages, fn(page) {
+            vault.get_file_by_path(model.obsidian_context.vault, page.path)
+            |> result.try(fn(file) {
+              vault.cached_read(model.obsidian_context.vault, file)
+              |> promise.map(fn(content) { #(page.path, content) })
+              |> Ok()
+            })
+          })
+          |> result.values()
+          |> promise.await_list()
+          |> promise.map(fn(contents) {
+            dispatch(ObsidianReadPageContents(dict.from_list(contents)))
+          })
+          Nil
+        })
+
+      let board =
+        board.new_board(
+          group_keys: board_config.statuses,
+          cards: pages,
+          group_key_fn:,
+          update_group_key_fn:,
+        )
+
+      #(board, effect)
     })
 
-  #(Model(..model, board_config: board_config, board: board), effects)
+  #(
+    Model(..model, board_config: board_config, board: Some(board)),
+    effect.batch([effect, effects]),
+  )
 }
 
 fn show_context_menu(
@@ -593,6 +638,25 @@ fn board_view(model: Model) -> Element(Msg) {
                 _ -> element.none()
               }
 
+              let content_preview = case page.content {
+                Some(content) -> {
+                  let assert Ok(re) = regexp.from_string("\\n# .+\\n")
+                  case regexp.split(re, content) {
+                    [_, content] ->
+                      h.div(
+                        [
+                          attr.class(
+                            "[display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden",
+                          ),
+                        ],
+                        [h.text(content)],
+                      )
+                    _ -> element.none()
+                  }
+                }
+                None -> element.none()
+              }
+
               let invisible = case card {
                 Card(_) -> ""
                 _ -> "invisible"
@@ -632,6 +696,7 @@ fn board_view(model: Model) -> Element(Msg) {
                       [h.text(page.title)],
                     ),
                     task_info,
+                    content_preview,
                   ]),
                 ],
               )

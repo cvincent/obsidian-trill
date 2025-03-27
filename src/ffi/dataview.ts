@@ -1,5 +1,6 @@
 import { List, Ok, Error } from "build/dev/javascript/prelude.mjs";
 import { Page } from "build/dev/javascript/obsidian_plugin/ffi/dataview.mjs";
+import { None } from "build/dev/javascript/gleam_stdlib/gleam/option.mjs";
 
 function dv(): any {
   const win = <any>window;
@@ -11,12 +12,12 @@ export function pages(query: string): List<Page> {
     dv()
       .pages(query)
       .map((p: any) => {
-        console.log(p);
         return {
           title: p.title || p.file.path,
           path: p.file.path,
           status: p.status ? new Ok(p.status) : new Error("none"),
           original: p,
+          content: new None(),
         };
       }),
   );
