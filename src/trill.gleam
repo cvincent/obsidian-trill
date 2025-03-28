@@ -6,6 +6,7 @@ import confirm_modal
 import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
+import ffi/neovim
 import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
@@ -129,6 +130,7 @@ pub type Msg {
   UserStoppedDraggingCard(event: Dynamic)
   UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
   UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
+  UserClickedEditInNeoVim(file: Page)
 
   UserSelectedBoardConfig(board_config: BoardConfig)
   ObsidianReadPageContents(contents: Dict(String, String))
@@ -209,11 +211,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, effect.none())
       |> update_board(board.drag_over(board, over_page, after))
     }
+
     UserDraggedCardOverColumn(_event, over_column) -> {
       let assert Some(board) = model.board
 
       #(model, effect.none())
       |> update_board(board.drag_over_column(board, over_column))
+    }
+
+    UserClickedEditInNeoVim(page) -> {
+      let assert Ok(file) =
+        vault.get_file_by_path(model.obsidian_context.vault, page.path)
+
+      let assert Ok(neovim) =
+        decode.run(
+          dynamic.from(model.obsidian_context.app),
+          decode.at(
+            ["plugins", "plugins", "edit-in-neovim", "neovim"],
+            decode.dynamic,
+          ),
+        )
+
+      neovim.open_file(model.obsidian_context.vault, neovim, file)
+
+      #(model, effect.none())
     }
 
     UserSelectedBoardConfig(board_config) -> {
@@ -697,6 +718,15 @@ fn board_view(model: Model) -> Element(Msg) {
                     ),
                     task_info,
                     content_preview,
+                    h.div([attr.class("flex justify-end")], [
+                      h.a(
+                        [
+                          event.on_click(UserClickedEditInNeoVim(page)),
+                          attr.class("text-xs"),
+                        ],
+                        [h.text("nvim")],
+                      ),
+                    ]),
                   ]),
                 ],
               )

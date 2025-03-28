@@ -15,6 +15,7 @@ pub const statuses = [
   "ideas",
   "needs-research",
   "ready",
+  "in-progress",
   "done",
 ]
 

@@ -34,7 +34,7 @@ pub fn main(plugin: Plugin) {
       html_element.create_el_with_class(
         container,
         "div",
-        "trill-container h-full",
+        "trill-container h-full pr-4",
       )
 
       let assert Ok(_) =
