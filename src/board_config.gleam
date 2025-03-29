@@ -9,6 +9,8 @@ pub type BoardConfig {
 
 pub const null_status = "none"
 
+pub const done_status = "done"
+
 pub const statuses = [
   null_status,
   "inbox",
@@ -16,7 +18,7 @@ pub const statuses = [
   "needs-research",
   "ready",
   "in-progress",
-  "done",
+  done_status,
 ]
 
 pub const new_board_config = BoardConfig("", "", statuses)

@@ -131,6 +131,7 @@ pub type Msg {
   UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
   UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
   UserClickedEditInNeoVim(file: Page)
+  UserClickedArchiveAllDone
 
   UserSelectedBoardConfig(board_config: BoardConfig)
   ObsidianReadPageContents(contents: Dict(String, String))
@@ -235,6 +236,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       neovim.open_file(model.obsidian_context.vault, neovim, file)
 
       #(model, effect.none())
+    }
+
+    UserClickedArchiveAllDone -> {
+      let assert Some(board) = model.board
+
+      board.groups
+      |> dict.get(board_config.done_status)
+      |> result.unwrap([])
+      |> list.each(fn(card) {
+        let assert Card(page) = card
+        obsidian_context.add_tag(model.obsidian_context, page.path, "archive")
+        page
+      })
+
+      #(model, effect.none())
+      |> select_board_config(model.board_config)
     }
 
     UserSelectedBoardConfig(board_config) -> {
@@ -607,10 +624,23 @@ fn board_view(model: Model) -> Element(Msg) {
           _ -> attr.none()
         }
 
+        let archive_all = case status {
+          status if status == board_config.done_status ->
+            h.a([event.on_click(UserClickedArchiveAllDone)], [
+              h.text("archive all"),
+            ])
+          _ -> element.none()
+        }
+
         h.div(
           [attr.class("min-w-80 max-w-80 mr-4 height-full"), column_droppable],
           list.append(
-            [h.div([attr.class("mb-2")], [h.text(status)])],
+            [
+              h.div([attr.class("flex gap-2 mb-2")], [
+                h.div([], [h.text(status)]),
+                h.div([], [archive_all]),
+              ]),
+            ],
             list.map(cards, fn(card) {
               let page = card.inner
 

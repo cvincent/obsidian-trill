@@ -33,3 +33,6 @@ pub fn set_front_matter(
   }
   Nil
 }
+
+@external(javascript, "src/obsidian_context.ts", "add_tag")
+pub fn add_tag(ctx: ObsidianContext, path: String, tag: String) -> Nil
