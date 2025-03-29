@@ -17,6 +17,7 @@ import lustre/element/html as h
 import lustre/event
 import plinth/browser/event as pevent
 import trill/defs.{type Model, type Msg}
+import trill/internal_link
 
 pub fn view(model: Model) -> Element(Msg) {
   case model.board_config {
@@ -210,16 +211,13 @@ fn board_view(model: Model) -> Element(Msg) {
                 ],
                 [
                   h.div([attr.class(invisible)], [
-                    h.a(
-                      [
-                        attr.class("internal-link"),
-                        attr.href(page.path),
-                        event.on_click(defs.UserClickedInternalLink(page.path)),
-                        event.on("mouseover", fn(ev) {
-                          Ok(defs.UserHoveredInternalLink(ev, page.path))
-                        }),
-                      ],
-                      [h.text(page.title)],
+                    element.map(
+                      internal_link.view(internal_link.Model(
+                        obsidian_context: model.obsidian_context,
+                        page: page,
+                        view_name: defs.view_name,
+                      )),
+                      defs.InternalLinks,
                     ),
                     task_info,
                     content_preview,

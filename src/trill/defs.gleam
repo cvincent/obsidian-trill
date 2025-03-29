@@ -8,6 +8,7 @@ import gleam/option.{type Option}
 import gleam/result
 import obsidian_context.{type ObsidianContext}
 import plinth/browser/event.{type Event as PEvent}
+import trill/internal_link
 
 pub const view_name = "trill"
 
@@ -22,8 +23,7 @@ pub type Model {
 }
 
 pub type Msg {
-  UserClickedInternalLink(path: String)
-  UserHoveredInternalLink(event: Dynamic, path: String)
+  InternalLinks(internal_link.Msg)
 
   UserStartedDraggingCard(event: Dynamic, card: Card(Page))
   UserStoppedDraggingCard(event: Dynamic)

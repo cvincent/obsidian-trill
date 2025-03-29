@@ -9,7 +9,6 @@ import ffi/neovim
 import ffi/obsidian/modal
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
-import ffi/obsidian/workspace
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
 import ffi/plinth_ext/global
@@ -30,6 +29,7 @@ import plinth/browser/window
 import plinth/javascript/global as pglobal
 import tempo
 import trill/defs.{type Model, type Msg, Model}
+import trill/internal_link
 
 type Update =
   #(Model, Effect(Msg))
@@ -93,24 +93,10 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    defs.UserClickedInternalLink(path) -> #(
-      model,
-      effect.from(fn(_) {
-        workspace.open_link_text(model.obsidian_context.workspace, path, "tab")
-      }),
-    )
-
-    defs.UserHoveredInternalLink(event, path) -> #(
-      model,
-      effect.from(fn(_) {
-        workspace.trigger_hover_link(
-          model.obsidian_context.workspace,
-          event,
-          defs.view_name,
-          path,
-        )
-      }),
-    )
+    defs.InternalLinks(inner_msg) -> {
+      let #(_inner_model, effect) = internal_link.update(inner_msg)
+      #(model, effect.map(effect, defs.InternalLinks))
+    }
 
     defs.UserStartedDraggingCard(_event, card) -> {
       let assert Some(board) = model.board
