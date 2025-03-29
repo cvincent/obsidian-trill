@@ -138,6 +138,7 @@ pub type Msg {
 
   UserClickedBoardMenu(event: Dynamic)
   UserClickedNewBoard
+  UserClickedDuplicateBoard
   UserClickedEditBoard
   UserClickedDeleteBoard
 
@@ -280,6 +281,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, effect.none())
       |> show_context_menu(ev, [
         #("New board", "file-plus-2", UserClickedNewBoard),
+        #("Duplicate board", "copy-plus", UserClickedDuplicateBoard),
         #("Edit board", "pencil", UserClickedEditBoard),
         #("Delete board", "trash-2", UserClickedDeleteBoard),
       ])
@@ -289,6 +291,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, effect.none())
       |> show_board_config_form_modal(
         None,
+        "user-submitted-new-board-form",
+        "Create Board",
+      )
+    }
+
+    UserClickedDuplicateBoard -> {
+      let assert Some(board_config) = model.board_config
+
+      let duplicate =
+        BoardConfig(..board_config, name: board_config.name <> " Copy")
+
+      #(model, effect.none())
+      |> show_board_config_form_modal(
+        Some(duplicate),
         "user-submitted-new-board-form",
         "Create Board",
       )
