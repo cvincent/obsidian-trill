@@ -6,7 +6,7 @@ import ffi/obsidian/workspace
 import gleam/list
 import lustre
 import obsidian_context.{ObsidianContext}
-import trill
+import trill/trill
 
 pub fn main(plugin: Plugin) {
   components.setup()
