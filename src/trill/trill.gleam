@@ -1,4 +1,4 @@
-import board.{type Board, type Card, Card}
+import board.{type Card, Card}
 import board_config.{type BoardConfig, BoardConfig}
 import board_config_form
 import components
@@ -7,7 +7,7 @@ import context_menu
 import ffi/console
 import ffi/dataview.{type Page, Page}
 import ffi/neovim
-import ffi/obsidian/modal.{type Modal}
+import ffi/obsidian/modal
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
 import ffi/obsidian/workspace
@@ -37,22 +37,12 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/global as pglobal
 import tempo
-import trill/message.{type Msg}
+import trill/defs.{type Model, type Msg, Model}
 
 pub const view_name = "trill"
 
 pub fn app() -> App(ObsidianContext, Model, Msg) {
   lustre.application(init, update, view)
-}
-
-pub type Model {
-  Model(
-    obsidian_context: ObsidianContext,
-    board_config: Option(BoardConfig),
-    board_configs: List(BoardConfig),
-    board: Option(Board(String, Page)),
-    modal: Option(Modal),
-  )
 }
 
 fn group_key_fn(page: Page) {
@@ -89,19 +79,19 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
     model,
     effect.from(fn(dispatch) {
       window.add_event_listener("user-submitted-new-board-form", fn(ev) {
-        dispatch(message.UserSubmittedNewBoardForm(dynamic.from(ev)))
+        dispatch(defs.UserSubmittedNewBoardForm(dynamic.from(ev)))
       })
 
       window.add_event_listener("user-submitted-edit-board-form", fn(ev) {
-        dispatch(message.UserSubmittedEditBoardForm(dynamic.from(ev)))
+        dispatch(defs.UserSubmittedEditBoardForm(dynamic.from(ev)))
       })
 
       window.add_event_listener("user-clicked-delete-board-confirm", fn(_ev) {
-        dispatch(message.UserClickedDeleteBoardConfirm)
+        dispatch(defs.UserClickedDeleteBoardConfirm)
       })
 
       window.add_event_listener("user-clicked-delete-board-cancel", fn(_ev) {
-        dispatch(message.UserClickedDeleteBoardCancel)
+        dispatch(defs.UserClickedDeleteBoardCancel)
       })
 
       ["create", "modify", "delete", "rename"]
@@ -113,7 +103,7 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
 
           let id =
             pglobal.set_timeout(500, fn() {
-              dispatch(message.ObsidianReportedFileChange)
+              dispatch(defs.ObsidianReportedFileChange)
             })
 
           global.set_global("file-changed-debounce", id)
@@ -126,14 +116,14 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    message.UserClickedInternalLink(path) -> #(
+    defs.UserClickedInternalLink(path) -> #(
       model,
       effect.from(fn(_) {
         workspace.open_link_text(model.obsidian_context.workspace, path, "tab")
       }),
     )
 
-    message.UserHoveredInternalLink(event, path) -> #(
+    defs.UserHoveredInternalLink(event, path) -> #(
       model,
       effect.from(fn(_) {
         workspace.trigger_hover_link(
@@ -145,7 +135,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }),
     )
 
-    message.UserStartedDraggingCard(_event, card) -> {
+    defs.UserStartedDraggingCard(_event, card) -> {
       let assert Some(board) = model.board
       let assert Card(page) = card
 
@@ -153,7 +143,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> update_board(board.start_dragging(board, page))
     }
 
-    message.UserStoppedDraggingCard(_event) -> {
+    defs.UserStoppedDraggingCard(_event) -> {
       let assert Some(board) = model.board
       let assert Some(Card(page)) = board.dragging
       let #(board, new_status) = board.drop(board)
@@ -163,7 +153,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> maybe_write_new_status(page, new_status)
     }
 
-    message.UserDraggedCardOverTarget(event, over_card) -> {
+    defs.UserDraggedCardOverTarget(event, over_card) -> {
       let assert Some(board) = model.board
       let assert Card(over_page) = over_card
 
@@ -187,14 +177,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> update_board(board.drag_over(board, over_page, after))
     }
 
-    message.UserDraggedCardOverColumn(_event, over_column) -> {
+    defs.UserDraggedCardOverColumn(_event, over_column) -> {
       let assert Some(board) = model.board
 
       #(model, effect.none())
       |> update_board(board.drag_over_column(board, over_column))
     }
 
-    message.UserClickedEditInNeoVim(page) -> {
+    defs.UserClickedEditInNeoVim(page) -> {
       let assert Ok(file) =
         vault.get_file_by_path(model.obsidian_context.vault, page.path)
 
@@ -212,7 +202,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, effect.none())
     }
 
-    message.UserClickedArchiveAllDone -> {
+    defs.UserClickedArchiveAllDone -> {
       let assert Some(board) = model.board
 
       board.groups
@@ -228,12 +218,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> select_board_config(model.board_config)
     }
 
-    message.UserSelectedBoardConfig(board_config) -> {
+    defs.UserSelectedBoardConfig(board_config) -> {
       #(model, effect.none())
       |> select_board_config(Some(board_config))
     }
 
-    message.ObsidianReadPageContents(contents) -> {
+    defs.ObsidianReadPageContents(contents) -> {
       let assert Some(board) = model.board
 
       let board =
@@ -250,17 +240,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> update_board(board)
     }
 
-    message.UserClickedBoardMenu(ev) -> {
+    defs.UserClickedBoardMenu(ev) -> {
       #(model, effect.none())
       |> show_context_menu(ev, [
-        #("New board", "file-plus-2", message.UserClickedNewBoard),
-        #("Duplicate board", "copy-plus", message.UserClickedDuplicateBoard),
-        #("Edit board", "pencil", message.UserClickedEditBoard),
-        #("Delete board", "trash-2", message.UserClickedDeleteBoard),
+        #("New board", "file-plus-2", defs.UserClickedNewBoard),
+        #("Duplicate board", "copy-plus", defs.UserClickedDuplicateBoard),
+        #("Edit board", "pencil", defs.UserClickedEditBoard),
+        #("Delete board", "trash-2", defs.UserClickedDeleteBoard),
       ])
     }
 
-    message.UserClickedNewBoard -> {
+    defs.UserClickedNewBoard -> {
       #(model, effect.none())
       |> show_board_config_form_modal(
         None,
@@ -269,7 +259,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    message.UserClickedDuplicateBoard -> {
+    defs.UserClickedDuplicateBoard -> {
       let assert Some(board_config) = model.board_config
 
       let duplicate =
@@ -283,7 +273,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    message.UserClickedEditBoard -> {
+    defs.UserClickedEditBoard -> {
       #(model, effect.none())
       |> show_board_config_form_modal(
         model.board_config,
@@ -292,7 +282,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    message.UserClickedDeleteBoard -> {
+    defs.UserClickedDeleteBoard -> {
       let assert Some(board_config) = model.board_config
 
       let modal =
@@ -311,7 +301,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    message.UserSubmittedNewBoardForm(ev) -> {
+    defs.UserSubmittedNewBoardForm(ev) -> {
       let assert Ok(new_board_config) =
         decode.run(ev, decode.at(["detail"], board_config.from_json()))
 
@@ -325,7 +315,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> save_board_configs(board_configs)
     }
 
-    message.UserSubmittedEditBoardForm(ev) -> {
+    defs.UserSubmittedEditBoardForm(ev) -> {
       let assert Some(current_board_config) = model.board_config
 
       let assert Ok(updated_board_config) =
@@ -346,7 +336,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> close_modal()
     }
 
-    message.UserClickedDeleteBoardConfirm -> {
+    defs.UserClickedDeleteBoardConfirm -> {
       let assert Some(current_board_config) = model.board_config
       let new_board_configs =
         list.filter(model.board_configs, fn(bc) { bc != current_board_config })
@@ -362,12 +352,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> close_modal()
     }
 
-    message.UserClickedDeleteBoardCancel -> {
+    defs.UserClickedDeleteBoardCancel -> {
       #(model, effect.none())
       |> close_modal()
     }
 
-    message.ObsidianReportedFileChange -> {
+    defs.ObsidianReportedFileChange -> {
       case model.board_config {
         Some(board_config) ->
           #(model, effect.none())
@@ -410,7 +400,7 @@ fn select_board_config(
           |> result.values()
           |> promise.await_list()
           |> promise.map(fn(contents) {
-            dispatch(message.ObsidianReadPageContents(dict.from_list(contents)))
+            dispatch(defs.ObsidianReadPageContents(dict.from_list(contents)))
           })
           Nil
         })
@@ -593,7 +583,7 @@ fn board_view(model: Model) -> Element(Msg) {
           event.on_input(fn(value) {
             let assert Ok(board_config) =
               list.find(model.board_configs, fn(bc) { bc.name == value })
-            message.UserSelectedBoardConfig(board_config)
+            defs.UserSelectedBoardConfig(board_config)
           }),
         ],
         list.map(model.board_configs, fn(board_config) {
@@ -612,7 +602,7 @@ fn board_view(model: Model) -> Element(Msg) {
           attr.class(
             "clickable-icon [--icon-size:var(--icon-s)] [--icon-stroke:var(--icon-s-stroke-width)]",
           ),
-          event.on("click", fn(ev) { Ok(message.UserClickedBoardMenu(ev)) }),
+          event.on("click", fn(ev) { Ok(defs.UserClickedBoardMenu(ev)) }),
         ],
         [icons.icon("ellipsis-vertical")],
       ),
@@ -625,7 +615,7 @@ fn board_view(model: Model) -> Element(Msg) {
           [] ->
             event.on("dragover", fn(event) {
               let assert Ok(event) = pevent.cast_event(event)
-              Ok(message.UserDraggedCardOverColumn(event, status))
+              Ok(defs.UserDraggedCardOverColumn(event, status))
             })
 
           _ -> attr.none()
@@ -633,7 +623,7 @@ fn board_view(model: Model) -> Element(Msg) {
 
         let archive_all = case status {
           status if status == board_config.done_status ->
-            h.a([event.on_click(message.UserClickedArchiveAllDone)], [
+            h.a([event.on_click(defs.UserClickedArchiveAllDone)], [
               h.text("archive all"),
             ])
           _ -> element.none()
@@ -724,7 +714,7 @@ fn board_view(model: Model) -> Element(Msg) {
                 Card(_) ->
                   event.on("dragover", fn(ev) {
                     let assert Ok(ev) = pevent.cast_event(ev)
-                    Ok(message.UserDraggedCardOverTarget(ev, card))
+                    Ok(defs.UserDraggedCardOverTarget(ev, card))
                   })
 
                 _ -> attr.none()
@@ -735,10 +725,10 @@ fn board_view(model: Model) -> Element(Msg) {
                   attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
                   attr.attribute("draggable", "true"),
                   event.on("dragstart", fn(ev) {
-                    Ok(message.UserStartedDraggingCard(ev, card))
+                    Ok(defs.UserStartedDraggingCard(ev, card))
                   }),
                   event.on("dragend", fn(ev) {
-                    Ok(message.UserStoppedDraggingCard(ev))
+                    Ok(defs.UserStoppedDraggingCard(ev))
                   }),
                   dragover,
                 ],
@@ -748,11 +738,9 @@ fn board_view(model: Model) -> Element(Msg) {
                       [
                         attr.class("internal-link"),
                         attr.href(page.path),
-                        event.on_click(message.UserClickedInternalLink(
-                          page.path,
-                        )),
+                        event.on_click(defs.UserClickedInternalLink(page.path)),
                         event.on("mouseover", fn(ev) {
-                          Ok(message.UserHoveredInternalLink(ev, page.path))
+                          Ok(defs.UserHoveredInternalLink(ev, page.path))
                         }),
                       ],
                       [h.text(page.title)],
@@ -762,7 +750,7 @@ fn board_view(model: Model) -> Element(Msg) {
                     h.div([attr.class("flex justify-end")], [
                       h.a(
                         [
-                          event.on_click(message.UserClickedEditInNeoVim(page)),
+                          event.on_click(defs.UserClickedEditInNeoVim(page)),
                           attr.class("text-xs"),
                         ],
                         [h.text("nvim")],
@@ -778,7 +766,7 @@ fn board_view(model: Model) -> Element(Msg) {
                     attr.class("h-full"),
                     event.on("dragover", fn(ev) {
                       let assert Ok(ev) = pevent.cast_event(ev)
-                      Ok(message.UserDraggedCardOverColumn(ev, status))
+                      Ok(defs.UserDraggedCardOverColumn(ev, status))
                     }),
                   ],
                   [],

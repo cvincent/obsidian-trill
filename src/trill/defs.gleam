@@ -1,9 +1,22 @@
-import board.{type Card, Card}
+import board.{type Board, type Card, Card}
 import board_config.{type BoardConfig, BoardConfig}
 import ffi/dataview.{type Page, Page}
+import ffi/obsidian/modal.{type Modal}
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
+import gleam/option.{type Option}
+import obsidian_context.{type ObsidianContext}
 import plinth/browser/event.{type Event as PEvent}
+
+pub type Model {
+  Model(
+    obsidian_context: ObsidianContext,
+    board_config: Option(BoardConfig),
+    board_configs: List(BoardConfig),
+    board: Option(Board(String, Page)),
+    modal: Option(Modal),
+  )
+}
 
 pub type Msg {
   UserClickedInternalLink(path: String)
