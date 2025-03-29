@@ -5,8 +5,11 @@ import ffi/obsidian/modal.{type Modal}
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/option.{type Option}
+import gleam/result
 import obsidian_context.{type ObsidianContext}
 import plinth/browser/event.{type Event as PEvent}
+
+pub const view_name = "trill"
 
 pub type Model {
   Model(
@@ -45,4 +48,16 @@ pub type Msg {
   UserClickedDeleteBoardConfirm
 
   ObsidianReportedFileChange
+}
+
+pub fn group_key_fn(page: Page) {
+  result.unwrap(page.status, board_config.null_status)
+}
+
+pub fn update_group_key_fn(page: Page, new_status: String) {
+  let status = case new_status {
+    s if s == board_config.null_status -> Error(board_config.null_status)
+    s -> Ok(s)
+  }
+  Page(..page, status:)
 }
