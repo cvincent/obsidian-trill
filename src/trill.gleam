@@ -36,6 +36,7 @@ import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
 import plinth/browser/window
 import plinth/javascript/global as pglobal
+import tempo
 
 pub const view_name = "trill"
 
@@ -555,6 +556,24 @@ fn maybe_write_new_status(
           "status",
           new_status,
         )
+
+        case new_status {
+          Some(done) if done == board_config.done_status ->
+            obsidian_context.set_front_matter(
+              model.obsidian_context,
+              page.path,
+              "done",
+              Some(tempo.format_local(tempo.ISO8601Seconds)),
+            )
+          _ -> {
+            obsidian_context.set_front_matter(
+              model.obsidian_context,
+              page.path,
+              "done",
+              None,
+            )
+          }
+        }
       })
   }
 
