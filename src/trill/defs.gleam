@@ -15,8 +15,8 @@ pub const view_name = "trill"
 
 pub type Model {
   Model(
+    obs: ObsidianContext,
     toolbar: Option(toolbar.Model),
-    obsidian_context: ObsidianContext,
     board: Option(Board(String, Page)),
     modal: Option(Modal),
   )

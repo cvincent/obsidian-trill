@@ -30,12 +30,12 @@ import trill/toolbar
 type Update =
   #(Model, Effect(Msg))
 
-pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
-  let board_configs = board_config.list_from_json(obsidian_context.saved_data)
-  let toolbar = toolbar.maybe_toolbar(obsidian_context, board_configs)
+pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
+  let board_configs = board_config.list_from_json(obs.saved_data)
+  let toolbar = toolbar.maybe_toolbar(obs, board_configs)
   let board_config = option.map(toolbar, toolbar.current_board_config)
 
-  let model = Model(toolbar:, obsidian_context:, board: None, modal: None)
+  let model = Model(toolbar:, obs:, board: None, modal: None)
 
   #(
     model,
@@ -60,7 +60,7 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
 
       ["create", "modify", "delete", "rename"]
       |> list.each(fn(event) {
-        vault.on(model.obsidian_context.vault, event, fn(_file) {
+        vault.on(model.obs.vault, event, fn(_file) {
           let _ =
             global.get_timer_id("file-changed-debounce")
             |> result.try(fn(id) { pglobal.clear_timeout(id) |> Ok() })
@@ -153,19 +153,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     defs.UserClickedEditInNeoVim(page) -> {
-      let assert Ok(file) =
-        vault.get_file_by_path(model.obsidian_context.vault, page.path)
+      let assert Ok(file) = vault.get_file_by_path(model.obs.vault, page.path)
 
       let assert Ok(neovim) =
         decode.run(
-          dynamic.from(model.obsidian_context.app),
+          dynamic.from(model.obs.app),
           decode.at(
             ["plugins", "plugins", "edit-in-neovim", "neovim"],
             decode.dynamic,
           ),
         )
 
-      neovim.open_file(model.obsidian_context.vault, neovim, file)
+      neovim.open_file(model.obs.vault, neovim, file)
 
       #(model, effect.none())
     }
@@ -178,7 +177,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> result.unwrap([])
       |> list.each(fn(card) {
         let assert Card(page) = card
-        obsidian_context.add_tag(model.obsidian_context, page.path, "archive")
+        obsidian_context.add_tag(model.obs, page.path, "archive")
         page
       })
 
@@ -310,9 +309,9 @@ fn build_board_from_config(
       let effect =
         effect.from(fn(dispatch) {
           list.map(pages, fn(page) {
-            vault.get_file_by_path(model.obsidian_context.vault, page.path)
+            vault.get_file_by_path(model.obs.vault, page.path)
             |> result.try(fn(file) {
-              vault.cached_read(model.obsidian_context.vault, file)
+              vault.cached_read(model.obs.vault, file)
               |> promise.map(fn(content) { #(page.path, content) })
               |> Ok()
             })
@@ -357,7 +356,7 @@ fn save_board_configs(update: Update) -> Update {
     option.map(model.toolbar, fn(toolbar) {
       use _ <- effect.from
       let save_data = board_config.list_to_json(toolbar.board_configs)
-      plugin.save_data(model.obsidian_context.plugin, save_data)
+      plugin.save_data(model.obs.plugin, save_data)
     })
     |> option.unwrap(effect.none())
 
@@ -382,7 +381,7 @@ fn maybe_write_new_status(
         }
 
         obsidian_context.set_front_matter(
-          model.obsidian_context,
+          model.obs,
           page.path,
           "status",
           new_status,
@@ -391,14 +390,14 @@ fn maybe_write_new_status(
         case new_status {
           Some(done) if done == board_config.done_status ->
             obsidian_context.set_front_matter(
-              model.obsidian_context,
+              model.obs,
               page.path,
               "done",
               Some(tempo.format_local(tempo.ISO8601Seconds)),
             )
           _ -> {
             obsidian_context.set_front_matter(
-              model.obsidian_context,
+              model.obs,
               page.path,
               "done",
               None,
