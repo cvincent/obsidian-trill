@@ -9,7 +9,7 @@ import lustre/event
 import obsidian_context.{type ObsidianContext}
 
 pub type Model {
-  Model(obsidian_context: ObsidianContext, page: Page, view_name: String)
+  Model(obs: ObsidianContext, page: Page, view_name: String)
 }
 
 pub type Msg {
@@ -22,11 +22,7 @@ pub fn update(msg: Msg) -> #(Model, Effect(Msg)) {
     UserClicked(model) -> #(
       model,
       effect.from(fn(_) {
-        workspace.open_link_text(
-          model.obsidian_context.workspace,
-          model.page.path,
-          "tab",
-        )
+        workspace.open_link_text(model.obs.workspace, model.page.path, "tab")
       }),
     )
 
@@ -34,7 +30,7 @@ pub fn update(msg: Msg) -> #(Model, Effect(Msg)) {
       model,
       effect.from(fn(_) {
         workspace.trigger_hover_link(
-          model.obsidian_context.workspace,
+          model.obs.workspace,
           ev,
           model.view_name,
           model.page.path,

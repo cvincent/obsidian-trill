@@ -190,7 +190,7 @@ fn board_view(model: Model) -> Element(Msg) {
                   h.div([attr.class(invisible)], [
                     element.map(
                       internal_link.view(internal_link.Model(
-                        obsidian_context: model.obs,
+                        obs: model.obs,
                         page: page,
                         view_name: defs.view_name,
                       )),

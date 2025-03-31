@@ -17,7 +17,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import lustre/effect.{type Effect}
-import obsidian_context.{type ObsidianContext}
+import obsidian_context.{type ObsidianContext} as obs
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
 import plinth/browser/window
@@ -177,7 +177,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> result.unwrap([])
       |> list.each(fn(card) {
         let assert Card(page) = card
-        obsidian_context.add_tag(model.obs, page.path, "archive")
+        obs.add_tag(model.obs, page.path, "archive")
         page
       })
 
@@ -380,28 +380,18 @@ fn maybe_write_new_status(
           new_status -> Some(new_status)
         }
 
-        obsidian_context.set_front_matter(
-          model.obs,
-          page.path,
-          "status",
-          new_status,
-        )
+        obs.set_front_matter(model.obs, page.path, "status", new_status)
 
         case new_status {
           Some(done) if done == board_config.done_status ->
-            obsidian_context.set_front_matter(
+            obs.set_front_matter(
               model.obs,
               page.path,
               "done",
               Some(tempo.format_local(tempo.ISO8601Seconds)),
             )
           _ -> {
-            obsidian_context.set_front_matter(
-              model.obs,
-              page.path,
-              "done",
-              None,
-            )
+            obs.set_front_matter(model.obs, page.path, "done", None)
           }
         }
       })
