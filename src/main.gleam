@@ -20,6 +20,7 @@ pub fn main(plugin: Plugin) {
       plugin:,
       saved_data:,
       vault: plugin.get_vault(plugin),
+      view_name: trill.view_name,
       workspace: plugin.get_workspace(plugin),
     )
 

@@ -14,6 +14,7 @@ pub type ObsidianContext {
     plugin: Plugin,
     saved_data: Dynamic,
     vault: Vault,
+    view_name: String,
     workspace: Workspace,
   )
 }
