@@ -330,6 +330,8 @@ fn build_board_from_config(
           cards: pages,
           group_key_fn: defs.group_key_fn,
           update_group_key_fn: defs.update_group_key_fn,
+          null_status: board_config.null_status,
+          done_status: board_config.done_status,
         )
 
       #(board, effect)

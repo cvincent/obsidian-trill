@@ -1,4 +1,3 @@
-import board_config.{type BoardConfig}
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -13,6 +12,8 @@ pub type Board(group, inner) {
     dragging: Option(Card(inner)),
     group_key_fn: fn(inner) -> group,
     update_group_key_fn: fn(inner, group) -> inner,
+    null_status: String,
+    done_status: String,
   )
 }
 
@@ -27,6 +28,8 @@ pub fn new_board(
   cards cards: List(inner),
   group_key_fn group_key_fn: fn(inner) -> group,
   update_group_key_fn update_group_key_fn: fn(inner, group) -> inner,
+  null_status null_status: String,
+  done_status done_status: String,
 ) {
   let groups =
     group_keys
@@ -49,6 +52,8 @@ pub fn new_board(
     dragging: None,
     group_key_fn:,
     update_group_key_fn:,
+    null_status:,
+    done_status:,
   )
 }
 

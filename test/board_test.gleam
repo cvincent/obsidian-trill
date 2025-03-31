@@ -16,6 +16,8 @@ fn test_board() {
       }
     },
     update_group_key_fn: fn(inner, _) { inner },
+    null_status: "none",
+    done_status: "done",
   )
 }
 
