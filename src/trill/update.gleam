@@ -187,23 +187,6 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> build_board_from_config(board_config)
     }
 
-    defs.ObsidianReadPageContents(contents) -> {
-      let assert Some(board) = model.board
-
-      let board =
-        board.update_cards(board, fn(card) {
-          let assert Card(page) = card
-          let content =
-            page.path
-            |> dict.get(contents, _)
-            |> option.from_result()
-          Card(Page(..page, content: content))
-        })
-
-      #(model, effect.none())
-      |> update_board(board)
-    }
-
     defs.UserSubmittedNewBoardConfigForm(ev) -> {
       let assert Ok(new_board_config) =
         decode.run(ev, decode.at(["detail"], board_config.from_json()))
@@ -257,6 +240,23 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     defs.UserClickedDeleteBoardConfigCancel -> {
       #(model, effect.none())
       |> close_modal()
+    }
+
+    defs.ObsidianReadPageContents(contents) -> {
+      let assert Some(board) = model.board
+
+      let board =
+        board.update_cards(board, fn(card) {
+          let assert Card(page) = card
+          let content =
+            page.path
+            |> dict.get(contents, _)
+            |> option.from_result()
+          Card(Page(..page, content: content))
+        })
+
+      #(model, effect.none())
+      |> update_board(board)
     }
 
     defs.ObsidianReportedFileChange -> {

@@ -33,14 +33,12 @@ pub type Msg {
   UserClickedEditInNeoVim(file: Page)
   UserClickedArchiveAllDone
 
-  ObsidianReadPageContents(contents: Dict(String, String))
-
   UserSubmittedNewBoardConfigForm(event: Dynamic)
   UserSubmittedEditBoardConfigForm(event: Dynamic)
-
   UserClickedDeleteBoardConfigCancel
   UserClickedDeleteBoardConfigConfirm
 
+  ObsidianReadPageContents(contents: Dict(String, String))
   ObsidianReportedFileChange
 }
 
