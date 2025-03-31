@@ -253,7 +253,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> close_modal()
     }
 
-    // TODO: Can we have modals dismiss themselves?
+    // TODO: Generic event(s) for closing whatever modal happens to be open
     defs.UserClickedDeleteBoardConfigCancel -> {
       #(model, effect.none())
       |> close_modal()
