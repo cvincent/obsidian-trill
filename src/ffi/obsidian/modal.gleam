@@ -1,11 +1,5 @@
-import ffi/console
 import ffi/obsidian/app.{type App}
-import gleam/json
-import lustre/attribute as attr
-import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html as h
-import lustre/event
 import plinth/browser/element.{type Element as PElement} as pelement
 
 pub type Modal
