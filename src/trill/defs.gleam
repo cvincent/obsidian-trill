@@ -1,5 +1,5 @@
 import board.{type Board, type Card, Card}
-import board_config.{type BoardConfig, BoardConfig}
+import board_config
 import ffi/dataview.{type Page, Page}
 import ffi/obsidian/modal.{type Modal}
 import gleam/dict.{type Dict}
@@ -9,21 +9,22 @@ import gleam/result
 import obsidian_context.{type ObsidianContext}
 import plinth/browser/event.{type Event as PEvent}
 import trill/internal_link
+import trill/toolbar
 
 pub const view_name = "trill"
 
 pub type Model {
   Model(
+    toolbar: Option(toolbar.Model),
     obsidian_context: ObsidianContext,
-    board_config: Option(BoardConfig),
-    board_configs: List(BoardConfig),
     board: Option(Board(String, Page)),
     modal: Option(Modal),
   )
 }
 
 pub type Msg {
-  InternalLinks(internal_link.Msg)
+  InternalLinkMsg(internal_link.Msg)
+  ToolbarMsg(toolbar.Msg)
 
   UserStartedDraggingCard(event: Dynamic, card: Card(Page))
   UserStoppedDraggingCard(event: Dynamic)
@@ -32,20 +33,13 @@ pub type Msg {
   UserClickedEditInNeoVim(file: Page)
   UserClickedArchiveAllDone
 
-  UserSelectedBoardConfig(board_config: BoardConfig)
   ObsidianReadPageContents(contents: Dict(String, String))
 
-  UserClickedBoardMenu(event: Dynamic)
-  UserClickedNewBoard
-  UserClickedDuplicateBoard
-  UserClickedEditBoard
-  UserClickedDeleteBoard
+  UserSubmittedNewBoardConfigForm(event: Dynamic)
+  UserSubmittedEditBoardConfigForm(event: Dynamic)
 
-  UserSubmittedNewBoardForm(event: Dynamic)
-  UserSubmittedEditBoardForm(event: Dynamic)
-
-  UserClickedDeleteBoardCancel
-  UserClickedDeleteBoardConfirm
+  UserClickedDeleteBoardConfigCancel
+  UserClickedDeleteBoardConfigConfirm
 
   ObsidianReportedFileChange
 }

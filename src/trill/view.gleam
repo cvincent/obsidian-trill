@@ -18,10 +18,11 @@ import lustre/event
 import plinth/browser/event as pevent
 import trill/defs.{type Model, type Msg}
 import trill/internal_link
+import trill/toolbar
 
 pub fn view(model: Model) -> Element(Msg) {
-  case model.board_config {
-    Some(_board_config) -> board_view(model)
+  case model.toolbar {
+    Some(_toolbar) -> board_view(model)
     None -> blank_view(model)
   }
 }
@@ -52,38 +53,14 @@ fn board_view(model: Model) -> Element(Msg) {
       list.filter(board.group_keys, fn(gk) { gk != board_config.null_status })
   }
 
+  let toolbar =
+    model.toolbar
+    |> option.map(toolbar.view)
+    |> option.unwrap(element.none())
+    |> element.map(defs.ToolbarMsg)
+
   h.div([], [
-    h.div([attr.class("flex justify-start mb-2 gap-2")], [
-      h.select(
-        [
-          attr.class("dropdown"),
-          event.on_input(fn(value) {
-            let assert Ok(board_config) =
-              list.find(model.board_configs, fn(bc) { bc.name == value })
-            defs.UserSelectedBoardConfig(board_config)
-          }),
-        ],
-        list.map(model.board_configs, fn(board_config) {
-          h.option(
-            [
-              attr.selected(Some(board_config) == model.board_config),
-              // TODO: This should be a UUID
-              attr.value(board_config.name),
-            ],
-            board_config.name,
-          )
-        }),
-      ),
-      h.div(
-        [
-          attr.class(
-            "clickable-icon [--icon-size:var(--icon-s)] [--icon-stroke:var(--icon-s-stroke-width)]",
-          ),
-          event.on("click", fn(ev) { Ok(defs.UserClickedBoardMenu(ev)) }),
-        ],
-        [icons.icon("ellipsis-vertical")],
-      ),
-    ]),
+    toolbar,
     h.div(
       [attr.class("flex h-full")],
       list.map(group_keys, fn(status) {
@@ -217,7 +194,7 @@ fn board_view(model: Model) -> Element(Msg) {
                         page: page,
                         view_name: defs.view_name,
                       )),
-                      defs.InternalLinks,
+                      defs.InternalLinkMsg,
                     ),
                     task_info,
                     content_preview,

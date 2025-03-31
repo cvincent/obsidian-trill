@@ -1,9 +1,5 @@
 import board.{type Card, Card}
 import board_config.{type BoardConfig, BoardConfig}
-import board_config_form
-import components
-import confirm_modal
-import context_menu
 import ffi/dataview.{type Page, Page}
 import ffi/neovim
 import ffi/obsidian/modal
@@ -13,14 +9,13 @@ import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
 import ffi/plinth_ext/global
 import gleam/dict
-import gleam/dynamic.{type Dynamic}
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/int
 import gleam/javascript/promise
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/string
 import lustre/effect.{type Effect}
 import obsidian_context.{type ObsidianContext}
 import plinth/browser/element as pelement
@@ -30,46 +25,38 @@ import plinth/javascript/global as pglobal
 import tempo
 import trill/defs.{type Model, type Msg, Model}
 import trill/internal_link
+import trill/toolbar
 
 type Update =
   #(Model, Effect(Msg))
 
 pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
   let board_configs = board_config.list_from_json(obsidian_context.saved_data)
+  let toolbar = toolbar.maybe_toolbar(obsidian_context, board_configs)
+  let board_config = option.map(toolbar, toolbar.current_board_config)
 
-  let board_config =
-    board_configs
-    |> list.first()
-    |> result.map(fn(board_config) { Some(board_config) })
-    |> result.unwrap(None)
-
-  let model =
-    Model(
-      board_configs:,
-      board_config:,
-      obsidian_context:,
-      board: None,
-      modal: None,
-    )
+  let model = Model(toolbar:, obsidian_context:, board: None, modal: None)
 
   #(
     model,
     effect.from(fn(dispatch) {
-      window.add_event_listener("user-submitted-new-board-form", fn(ev) {
-        dispatch(defs.UserSubmittedNewBoardForm(dynamic.from(ev)))
+      window.add_event_listener(toolbar.user_submitted_new_board_form, fn(ev) {
+        dispatch(defs.UserSubmittedNewBoardConfigForm(dynamic.from(ev)))
       })
 
-      window.add_event_listener("user-submitted-edit-board-form", fn(ev) {
-        dispatch(defs.UserSubmittedEditBoardForm(dynamic.from(ev)))
+      window.add_event_listener(toolbar.user_submitted_edit_board_form, fn(ev) {
+        dispatch(defs.UserSubmittedEditBoardConfigForm(dynamic.from(ev)))
       })
 
-      window.add_event_listener("user-clicked-delete-board-confirm", fn(_ev) {
-        dispatch(defs.UserClickedDeleteBoardConfirm)
-      })
+      window.add_event_listener(
+        toolbar.user_clicked_delete_board_confirm,
+        fn(_ev) { dispatch(defs.UserClickedDeleteBoardConfigConfirm) },
+      )
 
-      window.add_event_listener("user-clicked-delete-board-cancel", fn(_ev) {
-        dispatch(defs.UserClickedDeleteBoardCancel)
-      })
+      window.add_event_listener(
+        toolbar.user_clicked_delete_board_cancel,
+        fn(_ev) { dispatch(defs.UserClickedDeleteBoardConfigCancel) },
+      )
 
       ["create", "modify", "delete", "rename"]
       |> list.each(fn(event) {
@@ -88,14 +75,32 @@ pub fn init(obsidian_context: ObsidianContext) -> #(Model, Effect(Msg)) {
       })
     }),
   )
-  |> select_board_config(board_config)
+  |> build_board_from_config(board_config)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    defs.InternalLinks(inner_msg) -> {
+    defs.InternalLinkMsg(inner_msg) -> {
       let #(_inner_model, effect) = internal_link.update(inner_msg)
-      #(model, effect.map(effect, defs.InternalLinks))
+      #(model, effect.map(effect, defs.InternalLinkMsg))
+    }
+
+    defs.ToolbarMsg(
+      toolbar.UserSelectedBoardConfig(board_config) as toolbar_msg,
+    ) -> {
+      #(model, effect.none())
+      |> toolbar_update(toolbar_msg)
+      |> build_board_from_config(Some(board_config))
+    }
+
+    defs.ToolbarMsg(toolbar.ToolbarDisplayedModal(modal)) -> #(
+      Model(..model, modal: Some(modal)),
+      effect.none(),
+    )
+
+    defs.ToolbarMsg(toolbar_msg) -> {
+      #(model, effect.none())
+      |> toolbar_update(toolbar_msg)
     }
 
     defs.UserStartedDraggingCard(_event, card) -> {
@@ -177,13 +182,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         page
       })
 
-      #(model, effect.none())
-      |> select_board_config(model.board_config)
-    }
+      let board_config = option.map(model.toolbar, toolbar.current_board_config)
 
-    defs.UserSelectedBoardConfig(board_config) -> {
       #(model, effect.none())
-      |> select_board_config(Some(board_config))
+      |> build_board_from_config(board_config)
     }
 
     defs.ObsidianReadPageContents(contents) -> {
@@ -203,128 +205,66 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> update_board(board)
     }
 
-    defs.UserClickedBoardMenu(ev) -> {
-      #(model, effect.none())
-      |> show_context_menu(ev, [
-        #("New board", "file-plus-2", defs.UserClickedNewBoard),
-        #("Duplicate board", "copy-plus", defs.UserClickedDuplicateBoard),
-        #("Edit board", "pencil", defs.UserClickedEditBoard),
-        #("Delete board", "trash-2", defs.UserClickedDeleteBoard),
-      ])
-    }
-
-    defs.UserClickedNewBoard -> {
-      #(model, effect.none())
-      |> show_board_config_form_modal(
-        None,
-        "user-submitted-new-board-form",
-        "Create Board",
-      )
-    }
-
-    defs.UserClickedDuplicateBoard -> {
-      let assert Some(board_config) = model.board_config
-
-      let duplicate =
-        BoardConfig(..board_config, name: board_config.name <> " Copy")
-
-      #(model, effect.none())
-      |> show_board_config_form_modal(
-        Some(duplicate),
-        "user-submitted-new-board-form",
-        "Create Board",
-      )
-    }
-
-    defs.UserClickedEditBoard -> {
-      #(model, effect.none())
-      |> show_board_config_form_modal(
-        model.board_config,
-        "user-submitted-edit-board-form",
-        "Save Board",
-      )
-    }
-
-    defs.UserClickedDeleteBoard -> {
-      let assert Some(board_config) = model.board_config
-
-      let modal =
-        confirm_modal.element(
-          components.name,
-          "Are you sure you want to delete " <> board_config.name <> "?",
-          "Delete",
-          "user-clicked-delete-board-confirm",
-          "user-clicked-delete-board-cancel",
-        )
-      let modal = modal.with_element(model.obsidian_context.app, modal)
-
-      #(
-        Model(..model, modal: Some(modal)),
-        effect.from(fn(_) { modal.open(modal) }),
-      )
-    }
-
-    defs.UserSubmittedNewBoardForm(ev) -> {
+    defs.UserSubmittedNewBoardConfigForm(ev) -> {
       let assert Ok(new_board_config) =
         decode.run(ev, decode.at(["detail"], board_config.from_json()))
 
-      let board_configs =
-        [new_board_config, ..model.board_configs]
-        |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
-
-      #(model, effect.none())
-      |> select_board_config(Some(new_board_config))
-      |> close_modal()
-      |> save_board_configs(board_configs)
-    }
-
-    defs.UserSubmittedEditBoardForm(ev) -> {
-      let assert Some(current_board_config) = model.board_config
-
-      let assert Ok(updated_board_config) =
-        decode.run(ev, decode.at(["detail"], board_config.from_json()))
-
-      let board_configs =
-        model.board_configs
-        |> list.map(fn(bc) {
-          case bc {
-            bc if bc == current_board_config -> updated_board_config
-            bc -> bc
-          }
+      let toolbar =
+        option.map(model.toolbar, fn(toolbar) {
+          toolbar
+          |> toolbar.add_board_config(new_board_config)
+          |> toolbar.select_board_config(new_board_config)
         })
 
       #(model, effect.none())
-      |> select_board_config(Some(updated_board_config))
-      |> save_board_configs(board_configs)
+      |> update_toolbar(toolbar)
+      |> build_board_from_config(Some(new_board_config))
       |> close_modal()
+      |> save_board_configs()
     }
 
-    defs.UserClickedDeleteBoardConfirm -> {
-      let assert Some(current_board_config) = model.board_config
-      let new_board_configs =
-        list.filter(model.board_configs, fn(bc) { bc != current_board_config })
+    defs.UserSubmittedEditBoardConfigForm(ev) -> {
+      let assert Ok(updated_board_config) =
+        decode.run(ev, decode.at(["detail"], board_config.from_json()))
 
-      let new_current_board_config =
-        new_board_configs
-        |> list.first()
-        |> option.from_result()
+      let toolbar =
+        option.map(model.toolbar, toolbar.update_current_board_config(
+          _,
+          updated_board_config,
+        ))
 
       #(model, effect.none())
-      |> select_board_config(new_current_board_config)
-      |> save_board_configs(new_board_configs)
+      |> update_toolbar(toolbar)
+      |> build_board_from_config(Some(updated_board_config))
+      |> save_board_configs()
       |> close_modal()
     }
 
-    defs.UserClickedDeleteBoardCancel -> {
+    defs.UserClickedDeleteBoardConfigConfirm -> {
+      let toolbar =
+        option.then(model.toolbar, toolbar.delete_current_board_config(_))
+
+      let current_board_config =
+        option.map(toolbar, toolbar.current_board_config)
+
+      #(model, effect.none())
+      |> update_toolbar(toolbar)
+      |> build_board_from_config(current_board_config)
+      |> save_board_configs()
+      |> close_modal()
+    }
+
+    // TODO: Can we have modals dismiss themselves?
+    defs.UserClickedDeleteBoardConfigCancel -> {
       #(model, effect.none())
       |> close_modal()
     }
 
     defs.ObsidianReportedFileChange -> {
-      case model.board_config {
-        Some(board_config) ->
+      case model.toolbar {
+        Some(toolbar.Model(board_config:, ..)) ->
           #(model, effect.none())
-          |> select_board_config(Some(board_config))
+          |> build_board_from_config(Some(board_config))
 
         _ -> #(model, effect.none())
       }
@@ -337,7 +277,27 @@ fn update_board(update: Update, board) -> Update {
   #(Model(..model, board: Some(board)), effects)
 }
 
-fn select_board_config(
+fn toolbar_update(update: Update, toolbar_msg: toolbar.Msg) {
+  let #(model, effects) = update
+
+  let toolbar_update = option.map(model.toolbar, toolbar.update(_, toolbar_msg))
+  let toolbar =
+    option.map(toolbar_update, fn(toolbar_update) { toolbar_update.0 })
+
+  let effect =
+    toolbar_update
+    |> option.map(fn(toolbar_update) { toolbar_update.1 })
+    |> option.unwrap(effect.none())
+    |> effect.map(defs.ToolbarMsg)
+
+  #(Model(..model, toolbar:), effect.batch([effect, effects]))
+}
+
+fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) {
+  #(Model(..update.0, toolbar: toolbar), update.1)
+}
+
+fn build_board_from_config(
   update: Update,
   board_config: Option(BoardConfig),
 ) -> Update {
@@ -376,54 +336,7 @@ fn select_board_config(
       #(board, effect)
     })
 
-  #(
-    Model(..model, board_config: board_config, board: Some(board)),
-    effect.batch([effect, effects]),
-  )
-}
-
-fn show_context_menu(
-  update: Update,
-  click_event: Dynamic,
-  menu: List(#(String, String, Msg)),
-) -> Update {
-  let #(model, effects) = update
-
-  let effect =
-    effect.from(fn(disp) {
-      let menu =
-        menu
-        |> list.map(fn(item) {
-          let #(name, icon, msg) = item
-          #(name, icon, fn() { disp(msg) })
-        })
-      context_menu.show(click_event, menu)
-      Nil
-    })
-
-  #(model, effect.batch([effect, effects]))
-}
-
-fn show_board_config_form_modal(
-  update: Update,
-  board_config: Option(BoardConfig),
-  emit_submit: String,
-  submit_label: String,
-) -> Update {
-  let #(model, effects) = update
-
-  let form =
-    board_config_form.element(
-      components.name,
-      board_config,
-      emit_submit,
-      submit_label,
-    )
-
-  let modal = modal.with_element(model.obsidian_context.app, form)
-  let effect = effect.from(fn(_) { modal.open(modal) })
-
-  #(Model(..model, modal: Some(modal)), effect.batch([effect, effects]))
+  #(Model(..model, board: Some(board)), effect.batch([effect, effects]))
 }
 
 fn close_modal(update: Update) -> Update {
@@ -431,28 +344,24 @@ fn close_modal(update: Update) -> Update {
 
   let effect = case model.modal {
     Some(modal) -> effect.from(fn(_) { modal.close(modal) })
-    _ -> effect.none()
+    None -> effect.none()
   }
 
   #(Model(..model, modal: None), effect.batch([effect, effects]))
 }
 
-fn save_board_configs(
-  update: Update,
-  board_configs: List(BoardConfig),
-) -> Update {
+fn save_board_configs(update: Update) -> Update {
   let #(model, effects) = update
 
   let effect =
-    effect.from(fn(_) {
-      let save_data = board_config.list_to_json(board_configs)
+    option.map(model.toolbar, fn(toolbar) {
+      use _ <- effect.from
+      let save_data = board_config.list_to_json(toolbar.board_configs)
       plugin.save_data(model.obsidian_context.plugin, save_data)
     })
+    |> option.unwrap(effect.none())
 
-  #(
-    Model(..model, board_configs: board_configs),
-    effect.batch([effect, effects]),
-  )
+  #(model, effect.batch([effect, effects]))
 }
 
 fn maybe_write_new_status(
