@@ -8,7 +8,7 @@ import gleam/option.{type Option}
 import gleam/result
 import obsidian_context.{type ObsidianContext}
 import plinth/browser/event.{type Event as PEvent}
-import trill/internal_link
+import trill/board_view
 import trill/toolbar
 
 pub const view_name = "trill"
@@ -17,39 +17,19 @@ pub type Model {
   Model(
     obs: ObsidianContext,
     toolbar: Option(toolbar.Model),
-    board: Option(Board(String, Page)),
+    board_view: Option(board_view.Model),
     modal: Option(Modal),
   )
 }
 
 pub type Msg {
-  InternalLinkMsg(internal_link.Msg)
   ToolbarMsg(toolbar.Msg)
-
-  UserStartedDraggingCard(event: Dynamic, card: Card(Page))
-  UserStoppedDraggingCard(event: Dynamic)
-  UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
-  UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
-  UserClickedEditInNeoVim(file: Page)
-  UserClickedArchiveAllDone
+  BoardViewMsg(board_view.Msg)
 
   UserSubmittedNewBoardConfigForm(event: Dynamic)
   UserSubmittedEditBoardConfigForm(event: Dynamic)
   UserClickedDeleteBoardConfigCancel
   UserClickedDeleteBoardConfigConfirm
 
-  ObsidianReadPageContents(contents: Dict(String, String))
   ObsidianReportedFileChange
-}
-
-pub fn group_key_fn(page: Page) {
-  result.unwrap(page.status, board_config.null_status)
-}
-
-pub fn update_group_key_fn(page: Page, new_status: String) {
-  let status = case new_status {
-    s if s == board_config.null_status -> Error(board_config.null_status)
-    s -> Ok(s)
-  }
-  Page(..page, status:)
 }

@@ -1,30 +1,19 @@
-import board.{type Card, Card}
-import board_config.{type BoardConfig, BoardConfig}
-import ffi/dataview.{type Page, Page}
-import ffi/neovim
+import board_config
 import ffi/obsidian/modal
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
-import ffi/plinth_ext/element as pxelement
-import ffi/plinth_ext/event as pxevent
 import ffi/plinth_ext/global
-import gleam/dict
 import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/int
-import gleam/javascript/promise
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import lustre/effect.{type Effect}
-import obsidian_context.{type ObsidianContext} as obs
-import plinth/browser/element as pelement
-import plinth/browser/event as pevent
+import obsidian_context.{type ObsidianContext}
 import plinth/browser/window
 import plinth/javascript/global as pglobal
-import tempo
+import trill/board_view
 import trill/defs.{type Model, type Msg, Model}
-import trill/internal_link
 import trill/toolbar
 
 type Update =
@@ -33,9 +22,13 @@ type Update =
 pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
   let board_configs = board_config.list_from_json(obs.saved_data)
   let toolbar = toolbar.maybe_toolbar(obs, board_configs)
-  let board_config = option.map(toolbar, toolbar.current_board_config)
 
-  let model = Model(toolbar:, obs:, board: None, modal: None)
+  let board_view =
+    option.map(toolbar, fn(toolbar) {
+      board_view.new(obs, toolbar.board_config)
+    })
+
+  let model = Model(toolbar:, obs:, board_view:, modal: None)
 
   #(
     model,
@@ -75,117 +68,28 @@ pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
       })
     }),
   )
-  |> build_board_from_config(board_config)
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    defs.InternalLinkMsg(inner_msg) -> {
-      let #(_inner_model, effect) = internal_link.update(inner_msg)
-      #(model, effect.map(effect, defs.InternalLinkMsg))
-    }
-
     defs.ToolbarMsg(
-      toolbar.UserSelectedBoardConfig(board_config) as toolbar_msg,
-    ) -> {
+      toolbar.UserSelectedBoardConfig(_board_config) as toolbar_msg,
+    ) ->
       #(model, effect.none())
       |> toolbar_update(toolbar_msg)
-      |> build_board_from_config(Some(board_config))
-    }
+      |> update_board_view_board_config()
 
-    defs.ToolbarMsg(toolbar.ToolbarDisplayedModal(modal)) -> #(
-      Model(..model, modal: Some(modal)),
-      effect.none(),
-    )
+    defs.ToolbarMsg(toolbar.ToolbarDisplayedModal(modal) as toolbar_msg) ->
+      #(Model(..model, modal: Some(modal)), effect.none())
+      |> toolbar_update(toolbar_msg)
 
-    defs.ToolbarMsg(toolbar_msg) -> {
+    defs.ToolbarMsg(toolbar_msg) ->
       #(model, effect.none())
       |> toolbar_update(toolbar_msg)
-    }
 
-    defs.UserStartedDraggingCard(_event, card) -> {
-      let assert Some(board) = model.board
-      let assert Card(page) = card
-
+    defs.BoardViewMsg(board_view_msg) ->
       #(model, effect.none())
-      |> update_board(board.start_dragging(board, page))
-    }
-
-    defs.UserStoppedDraggingCard(_event) -> {
-      let assert Some(board) = model.board
-      let assert Some(Card(page)) = board.dragging
-      let #(board, new_status) = board.drop(board)
-
-      #(model, effect.none())
-      |> update_board(board)
-      |> maybe_write_new_status(page, new_status)
-    }
-
-    defs.UserDraggedCardOverTarget(event, over_card) -> {
-      let assert Some(board) = model.board
-      let assert Card(over_page) = over_card
-
-      let assert Ok(target_card_el) =
-        event
-        |> pevent.target()
-        |> pelement.cast()
-
-      let assert Ok(target_card_el) =
-        pelement.closest(target_card_el, "[draggable=true]")
-
-      let target = pxelement.get_bounding_client_rect(target_card_el)
-      let mouse = pxevent.get_client_coords(event)
-
-      let top_dist = int.absolute_value(target.top - mouse.y)
-      let bot_dist = int.absolute_value(target.top + target.height - mouse.y)
-
-      let after = bot_dist < top_dist
-
-      #(model, effect.none())
-      |> update_board(board.drag_over(board, over_page, after))
-    }
-
-    defs.UserDraggedCardOverColumn(_event, over_column) -> {
-      let assert Some(board) = model.board
-
-      #(model, effect.none())
-      |> update_board(board.drag_over_column(board, over_column))
-    }
-
-    defs.UserClickedEditInNeoVim(page) -> {
-      let assert Ok(file) = vault.get_file_by_path(model.obs.vault, page.path)
-
-      let assert Ok(neovim) =
-        decode.run(
-          dynamic.from(model.obs.app),
-          decode.at(
-            ["plugins", "plugins", "edit-in-neovim", "neovim"],
-            decode.dynamic,
-          ),
-        )
-
-      neovim.open_file(model.obs.vault, neovim, file)
-
-      #(model, effect.none())
-    }
-
-    defs.UserClickedArchiveAllDone -> {
-      let assert Some(board) = model.board
-
-      board.groups
-      |> dict.get(board_config.done_status)
-      |> result.unwrap([])
-      |> list.each(fn(card) {
-        let assert Card(page) = card
-        obs.add_tag(model.obs, page.path, "archive")
-        page
-      })
-
-      let board_config = option.map(model.toolbar, toolbar.current_board_config)
-
-      #(model, effect.none())
-      |> build_board_from_config(board_config)
-    }
+      |> board_view_update(board_view_msg)
 
     defs.UserSubmittedNewBoardConfigForm(ev) -> {
       let assert Ok(new_board_config) =
@@ -200,9 +104,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> build_board_from_config(Some(new_board_config))
-      |> close_modal()
+      |> update_board_view_board_config()
       |> save_board_configs()
+      |> close_modal()
     }
 
     defs.UserSubmittedEditBoardConfigForm(ev) -> {
@@ -217,7 +121,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> build_board_from_config(Some(updated_board_config))
+      |> update_board_view_board_config()
       |> save_board_configs()
       |> close_modal()
     }
@@ -226,12 +130,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let toolbar =
         option.then(model.toolbar, toolbar.delete_current_board_config(_))
 
-      let current_board_config =
-        option.map(toolbar, toolbar.current_board_config)
-
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> build_board_from_config(current_board_config)
+      |> update_board_view_board_config()
       |> save_board_configs()
       |> close_modal()
     }
@@ -242,38 +143,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> close_modal()
     }
 
-    defs.ObsidianReadPageContents(contents) -> {
-      let assert Some(board) = model.board
-
-      let board =
-        board.update_cards(board, fn(card) {
-          let assert Card(page) = card
-          let content =
-            page.path
-            |> dict.get(contents, _)
-            |> option.from_result()
-          Card(Page(..page, content: content))
-        })
-
-      #(model, effect.none())
-      |> update_board(board)
-    }
-
     defs.ObsidianReportedFileChange -> {
-      case model.toolbar {
-        Some(toolbar.Model(board_config:, ..)) ->
-          #(model, effect.none())
-          |> build_board_from_config(Some(board_config))
-
-        _ -> #(model, effect.none())
-      }
+      #(model, effect.none())
+      |> update_board_view_board_config()
     }
   }
-}
-
-fn update_board(update: Update, board) -> Update {
-  let #(model, effects) = update
-  #(Model(..model, board: Some(board)), effects)
 }
 
 fn toolbar_update(update: Update, toolbar_msg: toolbar.Msg) {
@@ -293,62 +167,36 @@ fn toolbar_update(update: Update, toolbar_msg: toolbar.Msg) {
 }
 
 fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) {
-  #(Model(..update.0, toolbar: toolbar), update.1)
+  #(Model(..update.0, toolbar:), update.1)
 }
 
-fn build_board_from_config(
-  update: Update,
-  board_config: Option(BoardConfig),
-) -> Update {
+fn board_view_update(update: Update, board_view_msg: board_view.Msg) {
   let #(model, effects) = update
 
-  let assert Some(#(board, effect)) =
-    option.map(board_config, fn(board_config) {
-      let pages = dataview.pages(board_config.query)
+  let board_view_update =
+    option.map(model.board_view, board_view.update(_, board_view_msg))
+  let board_view =
+    option.map(board_view_update, fn(board_view_update) { board_view_update.0 })
 
-      let effect =
-        effect.from(fn(dispatch) {
-          list.map(pages, fn(page) {
-            vault.get_file_by_path(model.obs.vault, page.path)
-            |> result.try(fn(file) {
-              vault.cached_read(model.obs.vault, file)
-              |> promise.map(fn(content) { #(page.path, content) })
-              |> Ok()
-            })
-          })
-          |> result.values()
-          |> promise.await_list()
-          |> promise.map(fn(contents) {
-            dispatch(defs.ObsidianReadPageContents(dict.from_list(contents)))
-          })
-          Nil
-        })
+  let effect =
+    board_view_update
+    |> option.map(fn(board_view_update) { board_view_update.1 })
+    |> option.unwrap(effect.none())
+    |> effect.map(defs.BoardViewMsg)
 
-      let board =
-        board.new_board(
-          group_keys: board_config.statuses,
-          cards: pages,
-          group_key_fn: defs.group_key_fn,
-          update_group_key_fn: defs.update_group_key_fn,
-          null_status: board_config.null_status,
-          done_status: board_config.done_status,
-        )
-
-      #(board, effect)
-    })
-
-  #(Model(..model, board: Some(board)), effect.batch([effect, effects]))
+  #(Model(..model, board_view:), effect.batch([effect, effects]))
 }
 
-fn close_modal(update: Update) -> Update {
+pub fn update_board_view_board_config(update: Update) {
   let #(model, effects) = update
 
-  let effect = case model.modal {
-    Some(modal) -> effect.from(fn(_) { modal.close(modal) })
-    None -> effect.none()
+  let board_view = {
+    use board_view <- option.then(model.board_view)
+    use toolbar <- option.map(model.toolbar)
+    board_view.update_board_config(board_view, toolbar.board_config)
   }
 
-  #(Model(..model, modal: None), effect.batch([effect, effects]))
+  #(Model(..model, board_view:), effects)
 }
 
 fn save_board_configs(update: Update) -> Update {
@@ -365,39 +213,13 @@ fn save_board_configs(update: Update) -> Update {
   #(model, effect.batch([effect, effects]))
 }
 
-fn maybe_write_new_status(
-  update: Update,
-  page: Page,
-  new_status: String,
-) -> Update {
+fn close_modal(update: Update) -> Update {
   let #(model, effects) = update
-  let assert Some(board) = model.board
 
-  let effect = case new_status == board.group_key_fn(page) {
-    True -> effect.none()
-    False ->
-      effect.from(fn(_) {
-        let new_status = case new_status {
-          new_status if new_status == board_config.null_status -> None
-          new_status -> Some(new_status)
-        }
-
-        obs.set_front_matter(model.obs, page.path, "status", new_status)
-
-        case new_status {
-          Some(done) if done == board_config.done_status ->
-            obs.set_front_matter(
-              model.obs,
-              page.path,
-              "done",
-              Some(tempo.format_local(tempo.ISO8601Seconds)),
-            )
-          _ -> {
-            obs.set_front_matter(model.obs, page.path, "done", None)
-          }
-        }
-      })
+  let effect = case model.modal {
+    Some(modal) -> effect.from(fn(_) { modal.close(modal) })
+    None -> effect.none()
   }
 
-  #(model, effect.batch([effect, effects]))
+  #(Model(..model, modal: None), effect.batch([effect, effects]))
 }
