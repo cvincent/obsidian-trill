@@ -42,5 +42,5 @@ fn board_view(model: Model) -> Element(Msg) {
     |> option.unwrap(element.none())
     |> element.map(defs.BoardViewMsg)
 
-  h.div([], [toolbar, board_view])
+  h.div([attr.class("h-full")], [toolbar, board_view])
 }

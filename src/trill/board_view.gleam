@@ -102,7 +102,7 @@ pub type Msg {
   // TODO: See if we can just use Dynamic here, and do it consistently, now that
   // we know how
   UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
-  UserDraggedCardOverColumn(event: PEvent(Dynamic), over: String)
+  UserDraggedCardOverColumn(over: String)
   UserClickedEditInNeoVim(file: Page)
   UserClickedArchiveAllDone
   BoardViewArchivedAll
@@ -160,7 +160,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
       )
     }
 
-    UserDraggedCardOverColumn(_, over_column) -> {
+    UserDraggedCardOverColumn(over_column) -> {
       #(
         Model(..model, board: board.drag_over_column(model.board, over_column)),
         effect.none(),
@@ -280,15 +280,6 @@ pub fn view(model: Model) {
     [attr.class("flex h-full")],
     list.map(group_keys, fn(status) {
       let assert Ok(cards) = dict.get(board.groups, status)
-      let column_droppable = case cards {
-        [] ->
-          event.on("dragover", fn(event) {
-            let assert Ok(event) = pevent.cast_event(event)
-            Ok(UserDraggedCardOverColumn(event, status))
-          })
-
-        _ -> attr.none()
-      }
 
       let archive_all = case status {
         status if status == board.done_status ->
@@ -299,7 +290,7 @@ pub fn view(model: Model) {
       }
 
       h.div(
-        [attr.class("min-w-80 max-w-80 mr-4 height-full"), column_droppable],
+        [attr.class("min-w-80 max-w-80 mr-4 h-full")],
         list.append(
           [
             h.div([attr.class("flex gap-2 mb-2")], [
@@ -428,9 +419,8 @@ pub fn view(model: Model) {
               h.div(
                 [
                   attr.class("h-full"),
-                  event.on("dragover", fn(ev) {
-                    let assert Ok(ev) = pevent.cast_event(ev)
-                    Ok(UserDraggedCardOverColumn(ev, status))
+                  event.on("dragover", fn(_ev) {
+                    Ok(UserDraggedCardOverColumn(status))
                   }),
                 ],
                 [],
