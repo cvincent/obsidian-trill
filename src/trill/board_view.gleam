@@ -11,7 +11,7 @@ import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/regexp
 import gleam/result
 import icons
@@ -25,6 +25,7 @@ import plinth/browser/element as pelement
 import plinth/browser/event.{type Event as PEvent} as pevent
 import tempo
 import trill/internal_link
+import util.{option_guard}
 
 // Our modal _could_ just be an actual Board, but we will probably be passing
 // more into this view later. In particular, the page content cache I have in
@@ -128,11 +129,11 @@ pub fn update(model: Model, msg: Msg) -> Update {
     )
 
     UserStoppedDraggingCard(_) -> {
-      let assert Some(Card(page)) = model.board.dragging
+      let card = model.board.dragging
       let #(board, new_status) = board.drop(model.board)
 
       #(Model(..model, board:), effect.none())
-      |> maybe_write_new_status(page, new_status)
+      |> maybe_write_new_status(card, new_status)
     }
 
     UserDraggedCardOverTarget(event, over_card) -> {
@@ -231,15 +232,17 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
 fn maybe_write_new_status(
   update: Update,
-  page: Page,
+  card: Option(Card(Page)),
   new_status: Result(String, String),
 ) -> Update {
   let #(model, effects) = update
 
   let effect = {
     use <- bool.guard(result.is_ok(new_status), effect.none())
+    use card <- option_guard(card, effect.none())
     use _ <- effect.from
 
+    let page = card.inner
     let board = model.board
     let new_status = result.unwrap_both(new_status)
 
