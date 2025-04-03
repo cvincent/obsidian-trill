@@ -137,29 +137,37 @@ pub fn update(model: Model, msg: Msg) -> Update {
     }
 
     UserDraggedCardOverTarget(event, over_card) -> {
-      let board = model.board
-      let over_page = over_card.inner
+      {
+        use target_card_el <- result.try(
+          event
+          |> pevent.target()
+          |> pelement.cast()
+          |> result.replace_error(Nil),
+        )
+        use target_card_el <- result.try(pelement.closest(
+          target_card_el,
+          "[draggable=true]",
+        ))
 
-      let assert Ok(target_card_el) =
-        event
-        |> pevent.target()
-        |> pelement.cast()
+        let target = pxelement.get_bounding_client_rect(target_card_el)
+        let mouse = pxevent.get_client_coords(event)
 
-      let assert Ok(target_card_el) =
-        pelement.closest(target_card_el, "[draggable=true]")
+        let top_dist = int.absolute_value(target.top - mouse.y)
+        let bot_dist = int.absolute_value(target.top + target.height - mouse.y)
 
-      let target = pxelement.get_bounding_client_rect(target_card_el)
-      let mouse = pxevent.get_client_coords(event)
+        let after = bot_dist < top_dist
 
-      let top_dist = int.absolute_value(target.top - mouse.y)
-      let bot_dist = int.absolute_value(target.top + target.height - mouse.y)
-
-      let after = bot_dist < top_dist
-
-      #(
-        Model(..model, board: board.drag_over(board, over_page, after)),
-        effect.none(),
-      )
+        #(
+          Model(
+            ..model,
+            board: board.drag_over(model.board, over_card.inner, after),
+          ),
+          effect.none(),
+        )
+        |> Ok()
+      }
+      |> result.replace_error(#(model, effect.none()))
+      |> result.unwrap_both()
     }
 
     UserDraggedCardOverColumn(over_column) -> {
