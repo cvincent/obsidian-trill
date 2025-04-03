@@ -5,6 +5,7 @@ import ffi/neovim
 import ffi/obsidian/vault
 import ffi/plinth_ext/element as pxelement
 import ffi/plinth_ext/event as pxevent
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
@@ -228,39 +229,41 @@ pub fn update(model: Model, msg: Msg) -> Update {
   }
 }
 
-// TODO: This could be nicer
 fn maybe_write_new_status(
   update: Update,
   page: Page,
-  new_status: String,
+  new_status: Result(String, String),
 ) -> Update {
   let #(model, effects) = update
-  let board = model.board
 
-  let effect = case new_status == board.group_key_fn(page) {
-    True -> effect.none()
-    False ->
-      effect.from(fn(_) {
-        let new_status = case new_status {
-          new_status if new_status == board.null_status -> None
-          new_status -> Some(new_status)
-        }
+  let effect = {
+    use <- bool.guard(result.is_ok(new_status), effect.none())
+    use _ <- effect.from
 
-        obs.set_front_matter(model.obs, page.path, "status", new_status)
+    let board = model.board
+    let new_status = result.unwrap_both(new_status)
 
-        case new_status {
-          Some(done) if done == board.done_status ->
-            obs.set_front_matter(
-              model.obs,
-              page.path,
-              "done",
-              Some(tempo.format_local(tempo.ISO8601Seconds)),
-            )
-          _ -> {
-            obs.set_front_matter(model.obs, page.path, "done", None)
-          }
-        }
-      })
+    case new_status {
+      new_status if new_status == board.done_status -> {
+        obs.set_front_matter(model.obs, page.path, "status", Some(new_status))
+        obs.set_front_matter(
+          model.obs,
+          page.path,
+          "done",
+          Some(tempo.format_local(tempo.ISO8601Seconds)),
+        )
+      }
+
+      new_status if new_status == board.null_status -> {
+        obs.set_front_matter(model.obs, page.path, "status", None)
+        obs.set_front_matter(model.obs, page.path, "done", None)
+      }
+
+      new_status -> {
+        obs.set_front_matter(model.obs, page.path, "status", Some(new_status))
+        obs.set_front_matter(model.obs, page.path, "done", None)
+      }
+    }
   }
 
   #(model, effect.batch([effect, effects]))

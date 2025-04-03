@@ -175,13 +175,13 @@ pub fn drop(board: Board(group, inner)) {
       list.find_map(cards, fn(card) {
         case card {
           TargetPlaceholder(_) -> Ok(gk)
-          _ -> Error(Nil)
+          _ -> Error(board.group_key_fn(dragging))
         }
       })
     })
+    |> result.replace_error(board.group_key_fn(dragging))
 
-  let assert Ok(new_gk) = result.or(target, Ok(board.group_key_fn(dragging)))
-  let dragging = board.update_group_key_fn(dragging, new_gk)
+  let dragging = board.update_group_key_fn(dragging, result.unwrap_both(target))
 
   let groups =
     board.groups
@@ -200,7 +200,7 @@ pub fn drop(board: Board(group, inner)) {
       })
     })
 
-  #(Board(..board, groups:, dragging: None), new_gk)
+  #(Board(..board, groups:, dragging: None), target)
 }
 
 pub fn update_cards(
