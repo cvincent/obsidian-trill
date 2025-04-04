@@ -28,6 +28,6 @@ pub fn try_or_nil(
 ) -> Result(b, Nil) {
   case result {
     Ok(x) -> fun(x)
-    Error(err) -> Error(Nil)
+    Error(_err) -> Error(Nil)
   }
 }
