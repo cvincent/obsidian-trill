@@ -20,6 +20,7 @@ import plinth/browser/window
 import plinth/javascript/global as pglobal
 import trill/board_view
 import trill/toolbar
+import util
 
 pub const view_name = "trill"
 
@@ -122,8 +123,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> board_view_update(board_view_msg)
 
     UserSubmittedNewBoardConfigForm(ev) -> {
-      let assert Ok(new_board_config) =
-        decode.run(ev, decode.at(["detail"], board_config.from_json()))
+      use new_board_config <- util.result_guard(
+        decode.run(ev, decode.at(["detail"], board_config.from_json())),
+        #(model, effect.none()),
+      )
 
       let toolbar =
         option.map(model.toolbar, fn(toolbar) {
@@ -140,8 +143,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserSubmittedEditBoardConfigForm(ev) -> {
-      let assert Ok(updated_board_config) =
-        decode.run(ev, decode.at(["detail"], board_config.from_json()))
+      use updated_board_config <- util.result_guard(
+        decode.run(ev, decode.at(["detail"], board_config.from_json())),
+        #(model, effect.none()),
+      )
 
       let toolbar =
         option.map(model.toolbar, toolbar.update_current_board_config(
