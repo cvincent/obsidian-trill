@@ -1,5 +1,4 @@
 import board_config.{type BoardConfig, BoardConfig}
-import ffi/console
 import ffi/dataview
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
@@ -15,6 +14,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
+import util
 
 const attrs = ["board-config", "emit-submit", "submit-label"]
 
@@ -90,26 +90,38 @@ fn init(_) {
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+  let no_change = #(model, effect.none())
+
   case msg {
     ParentSetAttr("board-config", value) -> {
-      let assert Ok(board_config) = decode.run(value, decode.string)
-      let assert Ok(board_config) =
-        json.parse(board_config, board_config.from_json())
+      use board_config <- util.result_guard(
+        decode.run(value, decode.string),
+        no_change,
+      )
+      use board_config <- util.result_guard(
+        json.parse(board_config, board_config.from_json()),
+        no_change,
+      )
       #(Model(..model, board_config:), effect.none())
     }
 
     ParentSetAttr("emit-submit", value) -> {
-      let assert Ok(on_submit) =
-        decode.run(value, decode.optional(decode.string))
+      use on_submit <- util.result_guard(
+        decode.run(value, decode.optional(decode.string)),
+        no_change,
+      )
       #(Model(..model, on_submit:), effect.none())
     }
 
     ParentSetAttr("submit-label", value) -> {
-      let assert Ok(submit_label) = decode.run(value, decode.string)
+      use submit_label <- util.result_guard(
+        decode.run(value, decode.string),
+        no_change,
+      )
       #(Model(..model, submit_label:), effect.none())
     }
 
-    ParentSetAttr(_, _) -> panic
+    ParentSetAttr(_, _) -> no_change
 
     UserUpdatedField(field, name) -> #(
       Model(
