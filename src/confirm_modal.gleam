@@ -10,6 +10,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
+import util
 
 const attrs = ["prompt", "confirm", "emit-confirm", "emit-cancel"]
 
@@ -80,30 +81,42 @@ fn init(_) {
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+  let no_change = #(model, effect.none())
+
   case msg {
     ParentSetAttr("prompt", value) -> {
-      let assert Ok(prompt) = decode.run(value, decode.string)
+      use prompt <- util.result_guard(
+        decode.run(value, decode.string),
+        no_change,
+      )
       #(Model(..model, prompt:), effect.none())
     }
 
     ParentSetAttr("confirm", value) -> {
-      let assert Ok(confirm) = decode.run(value, decode.string)
+      use confirm <- util.result_guard(
+        decode.run(value, decode.string),
+        no_change,
+      )
       #(Model(..model, confirm:), effect.none())
     }
 
     ParentSetAttr("emit-confirm", value) -> {
-      let assert Ok(emit_confirm) =
-        decode.run(value, decode.optional(decode.string))
+      use emit_confirm <- util.result_guard(
+        decode.run(value, decode.optional(decode.string)),
+        no_change,
+      )
       #(Model(..model, emit_confirm:), effect.none())
     }
 
     ParentSetAttr("emit-cancel", value) -> {
-      let assert Ok(emit_cancel) =
-        decode.run(value, decode.optional(decode.string))
+      use emit_cancel <- util.result_guard(
+        decode.run(value, decode.optional(decode.string)),
+        no_change,
+      )
       #(Model(..model, emit_cancel:), effect.none())
     }
 
-    ParentSetAttr(_, _) -> panic
+    ParentSetAttr(_, _) -> no_change
 
     UserConfirmed -> {
       case model.emit_confirm {
