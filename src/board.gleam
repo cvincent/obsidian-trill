@@ -1,7 +1,9 @@
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import util
 
 // Why does a card _have_ to contain a page? It could be a board of anything...
 
@@ -80,7 +82,8 @@ pub fn start_dragging(board: Board(group, inner), inner: inner) {
 }
 
 pub fn drag_over(board: Board(group, inner), over: inner, after: Bool) {
-  let assert Some(Card(dragging)) = board.dragging
+  use dragging <- util.option_guard(board.dragging, board)
+  let dragging = dragging.inner
 
   let groups =
     board.groups
@@ -106,7 +109,8 @@ pub fn drag_over(board: Board(group, inner), over: inner, after: Bool) {
 }
 
 pub fn drag_over_column(board: Board(group, inner), col_gk: group) {
-  let assert Some(Card(dragging)) = board.dragging
+  use dragging <- util.option_guard(board.dragging, board)
+  let dragging = dragging.inner
 
   let groups =
     board.groups
@@ -134,7 +138,7 @@ fn remove_target_when_adjacent_to_source(
   groups: Dict(group, List(Card(inner))),
   group: group,
 ) {
-  let assert Ok(group_cards) = dict.get(groups, group)
+  use group_cards <- util.result_guard(dict.get(groups, group), groups)
 
   let source_and_target_adjacent =
     group_cards
@@ -147,24 +151,25 @@ fn remove_target_when_adjacent_to_source(
       }
     })
 
-  case source_and_target_adjacent {
-    False -> groups
-    True ->
-      dict.insert(
-        groups,
-        group,
-        list.filter(group_cards, fn(card) {
-          case card {
-            TargetPlaceholder(_) -> False
-            _ -> True
-          }
-        }),
-      )
-  }
+  use <- bool.guard(source_and_target_adjacent, groups)
+
+  dict.insert(
+    groups,
+    group,
+    list.filter(group_cards, fn(card) {
+      case card {
+        TargetPlaceholder(_) -> False
+        _ -> True
+      }
+    }),
+  )
 }
 
-pub fn drop(board: Board(group, inner)) {
-  let assert Some(Card(dragging)) = board.dragging
+pub fn drop(
+  board: Board(group, inner),
+) -> Result(#(Board(group, inner), Result(group, group)), Nil) {
+  use dragging <- util.option_guard(board.dragging, Error(Nil))
+  let dragging = dragging.inner
 
   let target =
     board.groups
@@ -200,7 +205,7 @@ pub fn drop(board: Board(group, inner)) {
       })
     })
 
-  #(Board(..board, groups:, dragging: None), target)
+  #(Board(..board, groups:, dragging: None), target) |> Ok()
 }
 
 pub fn update_cards(
@@ -216,6 +221,8 @@ pub fn update_cards(
 
 fn gk_and_group_cards(board: Board(group, inner), card: inner) {
   let gk = board.group_key_fn(card)
-  let assert Ok(group_cards) = dict.get(board.groups, gk)
-  #(gk, group_cards)
+  case dict.get(board.groups, gk) {
+    Ok(group_cards) -> #(gk, group_cards)
+    Error(_) -> #(gk, [])
+  }
 }

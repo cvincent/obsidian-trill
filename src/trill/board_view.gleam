@@ -130,7 +130,10 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     UserStoppedDraggingCard(_) -> {
       let card = model.board.dragging
-      let #(board, new_status) = board.drop(model.board)
+      use #(board, new_status) <- util.result_guard(board.drop(model.board), #(
+        model,
+        effect.none(),
+      ))
 
       #(Model(..model, board:), effect.none())
       |> maybe_write_new_status(card, new_status)

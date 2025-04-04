@@ -164,7 +164,7 @@ pub fn drop_test() {
   |> board.drag_over(5, False)
   |> board.drop()
   |> then(fn(ret) {
-    let #(board, _) = ret
+    let assert Ok(#(board, _)) = ret
     board.groups
   })
   |> should.equal(
@@ -180,7 +180,7 @@ pub fn drop_test() {
   |> board.drag_over(3, True)
   |> board.drop()
   |> then(fn(ret) {
-    let #(board, _) = ret
+    let assert Ok(#(board, _)) = ret
     board.groups
   })
   |> should.equal(
@@ -196,7 +196,7 @@ pub fn drop_test() {
   |> board.drag_over(4, True)
   |> board.drop()
   |> then(fn(ret) {
-    let #(board, _) = ret
+    let assert Ok(#(board, _)) = ret
     board.groups
   })
   |> should.equal(
@@ -215,7 +215,7 @@ pub fn drag_over_column_test() {
     |> board.drag_over(2, False)
     |> board.drop()
     |> then(fn(ret) {
-      let #(board, _) = ret
+      let assert Ok(#(board, _)) = ret
       board
     })
 
@@ -224,7 +224,7 @@ pub fn drag_over_column_test() {
   |> board.drag_over_column("inbox")
   |> board.drop()
   |> then(fn(ret) {
-    let #(board, _) = ret
+    let assert Ok(#(board, _)) = ret
     board.groups
   })
   |> should.equal(
