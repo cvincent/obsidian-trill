@@ -103,7 +103,7 @@ pub type Msg {
   UserStoppedDraggingCard(event: Dynamic)
   // TODO: See if we can just use Dynamic here, and do it consistently, now that
   // we know how
-  UserDraggedCardOverTarget(event: PEvent(Dynamic), over: Card(Page))
+  UserDraggedCardOverTarget(event: Dynamic, over: Card(Page))
   UserDraggedCardOverColumn(over: String)
   UserClickedEditInNeoVim(file: Page)
   UserClickedArchiveAllDone
@@ -139,10 +139,11 @@ pub fn update(model: Model, msg: Msg) -> Update {
       |> maybe_write_new_status(card, new_status)
     }
 
-    UserDraggedCardOverTarget(event, over_card) -> {
+    UserDraggedCardOverTarget(ev, over_card) -> {
       {
+        use ev <- result.try(pevent.cast_event(ev) |> result.replace_error(Nil))
         use target_card_el <- result.try(
-          event
+          ev
           |> pevent.target()
           |> pelement.cast()
           |> result.replace_error(Nil),
@@ -153,7 +154,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
         ))
 
         let target = pxelement.get_bounding_client_rect(target_card_el)
-        let mouse = pxevent.get_client_coords(event)
+        let mouse = pxevent.get_client_coords(ev)
 
         let top_dist = int.absolute_value(target.top - mouse.y)
         let bot_dist = int.absolute_value(target.top + target.height - mouse.y)
@@ -187,9 +188,8 @@ pub fn update(model: Model, msg: Msg) -> Update {
           |> dict.get(model.board.done_status)
           |> result.unwrap([])
           |> list.each(fn(card) {
-            let assert Card(page) = card
-            obs.add_tag(model.obs, page.path, "archive")
-            page
+            obs.add_tag(model.obs, card.inner.path, "archive")
+            card.inner
           })
 
           dispatch(BoardViewArchivedAll)
@@ -228,12 +228,11 @@ pub fn update(model: Model, msg: Msg) -> Update {
     ObsidianReadPageContents(contents) -> {
       let board =
         board.update_cards(model.board, fn(card) {
-          let assert Card(page) = card
           let content =
-            page.path
+            card.inner.path
             |> dict.get(contents, _)
             |> option.from_result()
-          Card(Page(..page, content: content))
+          Card(Page(..card.inner, content: content))
         })
 
       #(Model(..model, board:), effect.none())
@@ -286,7 +285,9 @@ fn maybe_write_new_status(
 pub fn view(model: Model) {
   let board = model.board
 
-  let assert Ok(null_status_cards) = dict.get(board.groups, board.null_status)
+  let null_status_cards =
+    dict.get(board.groups, board.null_status)
+    |> result.unwrap([])
 
   let group_keys = case null_status_cards {
     [_card, ..] -> board.group_keys
@@ -296,7 +297,9 @@ pub fn view(model: Model) {
   h.div(
     [attr.class("flex h-full")],
     list.map(group_keys, fn(status) {
-      let assert Ok(cards) = dict.get(board.groups, status)
+      let cards =
+        dict.get(board.groups, status)
+        |> result.unwrap([])
 
       let archive_all = case status {
         status if status == board.done_status ->
@@ -390,7 +393,6 @@ pub fn view(model: Model) {
             let dragover = case card {
               Card(_) ->
                 event.on("dragover", fn(ev) {
-                  let assert Ok(ev) = pevent.cast_event(ev)
                   Ok(UserDraggedCardOverTarget(ev, card))
                 })
 
