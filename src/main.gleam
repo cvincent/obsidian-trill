@@ -38,8 +38,7 @@ pub fn main(plugin: Plugin) {
         "trill-container h-full pr-4",
       )
 
-      let assert Ok(_) =
-        lustre.start(trill.app(), ".trill-container", obsidian_context)
+      let _ = lustre.start(trill.app(), ".trill-container", obsidian_context)
       Nil
     },
     fn(_) { Nil },
