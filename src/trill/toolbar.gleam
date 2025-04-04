@@ -80,7 +80,7 @@ pub fn delete_current_board_config(toolbar: Model) {
 }
 
 pub type Msg {
-  UserSelectedBoardConfig(board_config: BoardConfig)
+  UserSelectedBoardConfig(board_config_name: String)
   UserClickedBoardMenu(ev: Dynamic)
   UserClickedNewBoard
   UserClickedDuplicateBoard
@@ -94,10 +94,15 @@ type Update =
 
 pub fn update(model: Model, msg: Msg) -> Update {
   case msg {
-    UserSelectedBoardConfig(board_config) -> #(
-      Model(..model, board_config:),
-      effect.none(),
-    )
+    UserSelectedBoardConfig(board_config_name) -> {
+      let board_config =
+        list.find(model.board_configs, fn(bc) { bc.name == board_config_name })
+
+      case board_config {
+        Ok(board_config) -> #(Model(..model, board_config:), effect.none())
+        Error(_) -> #(model, effect.none())
+      }
+    }
 
     UserClickedBoardMenu(ev) ->
       #(model, effect.none())
@@ -218,14 +223,7 @@ fn display_modal(modal: Modal) {
 pub fn view(model: Model) {
   h.div([attr.class("flex justify-start mb-2 gap-2")], [
     h.select(
-      [
-        attr.class("dropdown"),
-        event.on_input(fn(value) {
-          let assert Ok(board_config) =
-            list.find(model.board_configs, fn(bc) { bc.name == value })
-          UserSelectedBoardConfig(board_config)
-        }),
-      ],
+      [attr.class("dropdown"), event.on_input(UserSelectedBoardConfig)],
       list.map(model.board_configs, fn(board_config) {
         h.option(
           [
