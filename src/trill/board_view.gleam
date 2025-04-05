@@ -20,6 +20,7 @@ import lustre/effect.{type Effect}
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import lustre/internals/vdom.{type Element}
 import obsidian_context.{type ObsidianContext} as obs
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
@@ -283,39 +284,25 @@ fn maybe_write_new_status(
 }
 
 pub fn view(model: Model) {
-  let board = model.board
-
-  let null_status_cards =
-    dict.get(board.groups, board.null_status)
-    |> result.unwrap([])
-
-  let group_keys = case null_status_cards {
-    [_card, ..] -> board.group_keys
-    [] -> list.filter(board.group_keys, fn(gk) { gk != board.null_status })
-  }
-
-  h.div(
-    [attr.class("flex h-full")],
-    list.map(group_keys, fn(status) {
+  div(
+    "flex h-full",
+    list.map(statuses_to_show(model), fn(status) {
       let cards =
-        dict.get(board.groups, status)
+        dict.get(model.board.groups, status)
         |> result.unwrap([])
 
-      let archive_all = case status {
-        status if status == board.done_status ->
-          h.a([event.on_click(UserClickedArchiveAllDone)], [
-            h.text("archive all"),
-          ])
-        _ -> element.none()
-      }
-
-      h.div(
-        [attr.class("min-w-80 max-w-80 mr-4 h-full")],
+      div(
+        "min-w-80 max-w-80 mr-4 h-full",
         list.append(
           [
-            h.div([attr.class("flex gap-2 mb-2")], [
-              h.div([], [h.text(status)]),
-              h.div([], [archive_all]),
+            div("flex gap-2 mb-2", [
+              div("", [h.text(status)]),
+              div("", [
+                guard_element(
+                  status == model.board.done_status,
+                  archive_all_link(),
+                ),
+              ]),
             ]),
           ],
           list.map(cards, card_view(model, _))
@@ -323,9 +310,7 @@ pub fn view(model: Model) {
               h.div(
                 [
                   attr.class("h-full"),
-                  event.on("dragover", fn(_ev) {
-                    Ok(UserDraggedCardOverColumn(status))
-                  }),
+                  event_on("dragover", UserDraggedCardOverColumn(status)),
                 ],
                 [],
               ),
@@ -339,9 +324,89 @@ pub fn view(model: Model) {
 fn card_view(model: Model, card: Card(Page)) {
   let page = card.inner
 
+  let invisible = case card {
+    Card(_) -> attr.none()
+    _ -> attr.class("invisible")
+  }
+
+  let dragover = case card {
+    Card(_) ->
+      event.on("dragover", fn(ev) { Ok(UserDraggedCardOverTarget(ev, card)) })
+
+    _ -> attr.none()
+  }
+
+  h.div(
+    [
+      attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
+      attr.attribute("draggable", "true"),
+      event.on("dragstart", fn(ev) { Ok(UserStartedDraggingCard(ev, card)) }),
+      event.on("dragend", fn(ev) { Ok(UserStoppedDraggingCard(ev)) }),
+      dragover,
+    ],
+    [
+      h.div([invisible], [
+        element.map(
+          internal_link.view(internal_link.Model(
+            obs: model.obs,
+            page: page,
+            view_name: model.obs.view_name,
+          )),
+          InternalLinkMsg,
+        ),
+        task_info(card),
+        content_preview(card),
+        div("flex justify-end", [
+          h.a(
+            [
+              event.on_click(UserClickedEditInNeoVim(page)),
+              attr.class("text-xs"),
+            ],
+            [h.text("nvim")],
+          ),
+        ]),
+      ]),
+    ],
+  )
+}
+
+fn div(classes: String, contents: List(Element(Msg))) {
+  h.div([attr.class(classes)], contents)
+}
+
+fn event_on(event_name: String, msg: Msg) {
+  event.on(event_name, fn(_ev) { Ok(msg) })
+}
+
+fn guard_element(cond: Bool, element) {
+  case cond {
+    True -> element
+    False -> element.none()
+  }
+}
+
+fn statuses_to_show(model: Model) {
+  let null_status_cards =
+    dict.get(model.board.groups, model.board.null_status)
+    |> result.unwrap([])
+
+  case null_status_cards {
+    [_card, ..] -> model.board.group_keys
+    [] ->
+      list.filter(model.board.group_keys, fn(gk) {
+        gk != model.board.null_status
+      })
+  }
+}
+
+fn archive_all_link() {
+  h.a([event.on_click(UserClickedArchiveAllDone)], [h.text("archive all")])
+}
+
+fn task_info(card: Card(Page)) {
   let tasks =
     decode.run(
-      dynamic.from(page),
+      dynamic.from(card.inner),
       decode.at(["original", "file", "tasks"], decode.list(decode.dynamic)),
     )
 
@@ -363,81 +428,31 @@ fn card_view(model: Model, card: Card(Page)) {
     _ -> attr.none()
   }
 
-  let task_info = case task_count {
-    task_count if task_count > 0 ->
-      h.div([attr.class("flex gap-1"), task_info_color], [
-        h.div([attr.class("[--icon-size:var(--icon-s)] mt-[1px]")], [
-          icons.icon("square-check"),
-        ]),
-        h.div([attr.class("align-middle")], [
-          h.text(int.to_string(done_count) <> "/" <> int.to_string(task_count)),
-        ]),
-      ])
+  guard_element(
+    task_count > 0,
+    h.div([attr.class("flex gap-1"), task_info_color], [
+      div("[--icon-size:var(--icon-s)] mt-[1px]", [icons.icon("square-check")]),
+      div("align-middle", [
+        h.text(int.to_string(done_count) <> "/" <> int.to_string(task_count)),
+      ]),
+    ]),
+  )
+}
+
+fn content_preview(card: Card(Page)) {
+  use content <- option_guard(card.inner.content, element.none())
+  let assert Ok(re) = regexp.from_string("\\n# .+\\n")
+
+  case regexp.split(re, content) {
+    [_, content] ->
+      h.div(
+        [
+          attr.class(
+            "[display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden",
+          ),
+        ],
+        [h.text(content)],
+      )
     _ -> element.none()
   }
-
-  let content_preview = case page.content {
-    Some(content) -> {
-      // TODO: We should probably not be compiling a regex in an innerloop
-      let assert Ok(re) = regexp.from_string("\\n# .+\\n")
-      case regexp.split(re, content) {
-        [_, content] ->
-          h.div(
-            [
-              attr.class(
-                "[display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden",
-              ),
-            ],
-            [h.text(content)],
-          )
-        _ -> element.none()
-      }
-    }
-    None -> element.none()
-  }
-
-  let invisible = case card {
-    Card(_) -> ""
-    _ -> "invisible"
-  }
-
-  let dragover = case card {
-    Card(_) ->
-      event.on("dragover", fn(ev) { Ok(UserDraggedCardOverTarget(ev, card)) })
-
-    _ -> attr.none()
-  }
-
-  h.div(
-    [
-      attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
-      attr.attribute("draggable", "true"),
-      event.on("dragstart", fn(ev) { Ok(UserStartedDraggingCard(ev, card)) }),
-      event.on("dragend", fn(ev) { Ok(UserStoppedDraggingCard(ev)) }),
-      dragover,
-    ],
-    [
-      h.div([attr.class(invisible)], [
-        element.map(
-          internal_link.view(internal_link.Model(
-            obs: model.obs,
-            page: page,
-            view_name: model.obs.view_name,
-          )),
-          InternalLinkMsg,
-        ),
-        task_info,
-        content_preview,
-        h.div([attr.class("flex justify-end")], [
-          h.a(
-            [
-              event.on_click(UserClickedEditInNeoVim(page)),
-              attr.class("text-xs"),
-            ],
-            [h.text("nvim")],
-          ),
-        ]),
-      ]),
-    ],
-  )
 }
