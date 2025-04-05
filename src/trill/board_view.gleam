@@ -378,7 +378,7 @@ fn card_view(model: Model, card: Card(Page)) {
 
   let content_preview = case page.content {
     Some(content) -> {
-      // TODO: We shouldn't be compiling a regex in an inner loop
+      // TODO: We should probably not be compiling a regex in an innerloop
       let assert Ok(re) = regexp.from_string("\\n# .+\\n")
       case regexp.split(re, content) {
         [_, content] ->
