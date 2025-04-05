@@ -151,7 +151,7 @@ fn remove_target_when_adjacent_to_source(
       }
     })
 
-  use <- bool.guard(source_and_target_adjacent, groups)
+  use <- bool.guard(!source_and_target_adjacent, groups)
 
   dict.insert(
     groups,
