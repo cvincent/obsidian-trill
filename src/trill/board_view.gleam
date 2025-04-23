@@ -71,7 +71,6 @@ pub fn update_board_config(board_view: Model, board_config: BoardConfig) {
 }
 
 fn new_board_from_config(board_config: BoardConfig) {
-  // TODO: This whole thing smacks of "effect"...
   #(
     board.new_board(
       group_keys: board_config.statuses,
