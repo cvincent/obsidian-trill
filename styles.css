@@ -200,6 +200,9 @@
   .mb-2 {
     margin-bottom: calc(var(--spacing) * 2);
   }
+  .ml-1 {
+    margin-left: calc(var(--spacing) * 1);
+  }
   .\[display\:-webkit-box\] {
     display: -webkit-box;
   }

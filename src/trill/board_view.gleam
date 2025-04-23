@@ -25,6 +25,7 @@ import lustre/internals/vdom.{type Element}
 import obsidian_context.{type ObsidianContext} as obs
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
+import plinth/javascript/console
 import tempo
 import trill/internal_link
 import util.{option_guard}
@@ -89,6 +90,7 @@ pub type Msg {
   UserDraggedCardOverTarget(event: Dynamic, over: Card(Page))
   UserDraggedCardOverColumn(over: String)
   UserClickedEditInNeoVim(file: Page)
+  UserClickedDebug(file: Page)
   UserClickedArchiveAllDone
   BoardViewArchivedAll
 
@@ -235,6 +237,8 @@ pub fn update(model: Model, msg: Msg) -> Update {
       #(model, effect)
     }
 
+    UserClickedDebug(page) -> #(model, effect.from(fn(_) { console.log(page) }))
+
     ObsidianReadPageContents(contents) -> {
       #(
         Model(..model, card_contents: dict.merge(model.card_contents, contents)),
@@ -366,6 +370,10 @@ fn card_view(model: Model, card: Card(Page)) {
               attr.class("text-xs"),
             ],
             [h.text("nvim")],
+          ),
+          h.a(
+            [event.on_click(UserClickedDebug(page)), attr.class("text-xs ml-1")],
+            [h.text("debug")],
           ),
         ]),
       ]),
