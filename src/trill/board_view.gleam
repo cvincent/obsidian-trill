@@ -15,6 +15,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
 import gleam/result
+import gleam/string
 import icons
 import lustre/attribute as attr
 import lustre/effect.{type Effect}
@@ -361,6 +362,7 @@ fn card_view(model: Model, card: Card(Page)) {
           )),
           InternalLinkMsg,
         ),
+        tags(card),
         task_info(card),
         content_preview(model.card_contents, card),
         div("flex justify-end", [
@@ -412,6 +414,31 @@ fn statuses_to_show(model: Model) {
 
 fn archive_all_link() {
   h.a([event.on_click(UserClickedArchiveAllDone)], [h.text("archive all")])
+}
+
+fn tags(card: Card(Page)) {
+  decode.run(
+    dynamic.from(card.inner),
+    decode.at(["original", "tags"], decode.list(decode.string)),
+  )
+  |> result.replace_error(element.none())
+  |> result.map(fn(tags) {
+    guard_element(
+      list.length(tags) > 0,
+      div(
+        "flex flex-wrap gap-1 text-xs my-1",
+        tags
+          |> list.sort(string.compare)
+          |> list.map(fn(tag) {
+            div(
+              "bg-(--background-secondary-alt) whitespace-nowrap rounded-full px-2",
+              [h.text(tag)],
+            )
+          }),
+      ),
+    )
+  })
+  |> result.unwrap_both()
 }
 
 fn task_info(card: Card(Page)) {
