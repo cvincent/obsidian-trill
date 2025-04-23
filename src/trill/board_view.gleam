@@ -28,9 +28,6 @@ import tempo
 import trill/internal_link
 import util.{option_guard}
 
-// Our modal _could_ just be an actual Board, but we will probably be passing
-// more into this view later. In particular, the page content cache I have in
-// mind. So we'll wrap the board in a record in anticipation of that.
 pub type Model {
   Model(
     obs: ObsidianContext,
