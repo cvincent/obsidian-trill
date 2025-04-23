@@ -33,20 +33,7 @@ pub fn new_board(
   null_status null_status: String,
   done_status done_status: String,
 ) {
-  let groups =
-    group_keys
-    |> list.map(fn(gk) {
-      #(
-        gk,
-        list.filter_map(cards, fn(inner) {
-          case group_key_fn(inner) == gk {
-            True -> Ok(Card(inner))
-            False -> Error(Nil)
-          }
-        }),
-      )
-    })
-    |> dict.from_list()
+  let groups = groups_from_cards(group_keys, group_key_fn, cards)
 
   Board(
     group_keys:,
@@ -208,6 +195,11 @@ pub fn drop(
   #(Board(..board, groups:, dragging: None), target) |> Ok()
 }
 
+pub fn set_cards(board: Board(group, inner), cards: List(inner)) {
+  let groups = groups_from_cards(board.group_keys, board.group_key_fn, cards)
+  Board(..board, groups:)
+}
+
 pub fn update_cards(
   board: Board(group, inner),
   func: fn(Card(inner)) -> Card(inner),
@@ -225,4 +217,24 @@ fn gk_and_group_cards(board: Board(group, inner), card: inner) {
     Ok(group_cards) -> #(gk, group_cards)
     Error(_) -> #(gk, [])
   }
+}
+
+fn groups_from_cards(
+  group_keys: List(group),
+  group_key_fn: fn(inner) -> group,
+  cards: List(inner),
+) {
+  group_keys
+  |> list.map(fn(gk) {
+    #(
+      gk,
+      list.filter_map(cards, fn(inner) {
+        case group_key_fn(inner) == gk {
+          True -> Ok(Card(inner))
+          False -> Error(Nil)
+        }
+      }),
+    )
+  })
+  |> dict.from_list()
 }
