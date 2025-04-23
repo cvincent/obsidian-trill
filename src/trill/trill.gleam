@@ -56,50 +56,58 @@ pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
   let board_configs = board_config.list_from_json(obs.saved_data)
   let toolbar = toolbar.maybe_toolbar(obs, board_configs)
 
-  let board_view =
+  let #(board_view, board_view_effect) =
     option.map(toolbar, fn(toolbar) {
-      board_view.new(obs, toolbar.board_config)
+      let #(board_view, effect) = board_view.new(obs, toolbar.board_config)
+      #(Some(board_view), effect.map(effect, BoardViewMsg))
     })
+    |> option.unwrap(#(None, effect.none()))
 
   let model = Model(toolbar:, obs:, board_view:, modal: None)
 
   #(
     model,
-    effect.from(fn(dispatch) {
-      window.add_event_listener(toolbar.user_submitted_new_board_form, fn(ev) {
-        dispatch(UserSubmittedNewBoardConfigForm(dynamic.from(ev)))
-      })
-
-      window.add_event_listener(toolbar.user_submitted_edit_board_form, fn(ev) {
-        dispatch(UserSubmittedEditBoardConfigForm(dynamic.from(ev)))
-      })
-
-      window.add_event_listener(
-        toolbar.user_clicked_delete_board_confirm,
-        fn(_ev) { dispatch(UserClickedDeleteBoardConfigConfirm) },
-      )
-
-      window.add_event_listener(
-        toolbar.user_clicked_delete_board_cancel,
-        fn(_ev) { dispatch(UserClickedDeleteBoardConfigCancel) },
-      )
-
-      ["create", "modify", "delete", "rename"]
-      |> list.each(fn(event) {
-        vault.on(model.obs.vault, event, fn(_file) {
-          let _ =
-            global.get_timer_id("file-changed-debounce")
-            |> result.try(fn(id) { pglobal.clear_timeout(id) |> Ok() })
-
-          let id =
-            pglobal.set_timeout(500, fn() {
-              dispatch(ObsidianReportedFileChange)
-            })
-
-          global.set_global("file-changed-debounce", id)
+    effect.batch([
+      board_view_effect,
+      effect.from(fn(dispatch) {
+        window.add_event_listener(toolbar.user_submitted_new_board_form, fn(ev) {
+          dispatch(UserSubmittedNewBoardConfigForm(dynamic.from(ev)))
         })
-      })
-    }),
+
+        window.add_event_listener(
+          toolbar.user_submitted_edit_board_form,
+          fn(ev) {
+            dispatch(UserSubmittedEditBoardConfigForm(dynamic.from(ev)))
+          },
+        )
+
+        window.add_event_listener(
+          toolbar.user_clicked_delete_board_confirm,
+          fn(_ev) { dispatch(UserClickedDeleteBoardConfigConfirm) },
+        )
+
+        window.add_event_listener(
+          toolbar.user_clicked_delete_board_cancel,
+          fn(_ev) { dispatch(UserClickedDeleteBoardConfigCancel) },
+        )
+
+        ["create", "modify", "delete", "rename"]
+        |> list.each(fn(event) {
+          vault.on(model.obs.vault, event, fn(_file) {
+            let _ =
+              global.get_timer_id("file-changed-debounce")
+              |> result.try(fn(id) { pglobal.clear_timeout(id) |> Ok() })
+
+            let id =
+              pglobal.set_timeout(500, fn() {
+                dispatch(ObsidianReportedFileChange)
+              })
+
+            global.set_global("file-changed-debounce", id)
+          })
+        })
+      }),
+    ]),
   )
 }
 
@@ -225,13 +233,19 @@ fn board_view_update(update: Update, board_view_msg: board_view.Msg) {
 pub fn update_board_view_board_config(update: Update) {
   let #(model, effects) = update
 
-  let board_view = {
+  {
     use board_view <- option.then(model.board_view)
     use toolbar <- option.map(model.toolbar)
-    board_view.update_board_config(board_view, toolbar.board_config)
-  }
 
-  #(Model(..model, board_view:), effects)
+    let #(board_view, effect) =
+      board_view.update_board_config(board_view, toolbar.board_config)
+
+    #(
+      Model(..model, board_view: Some(board_view)),
+      effect.batch([effect.map(effect, BoardViewMsg), effects]),
+    )
+  }
+  |> option.unwrap(#(model, effects))
 }
 
 fn save_board_configs(update: Update) -> Update {

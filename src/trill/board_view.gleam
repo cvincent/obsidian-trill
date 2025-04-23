@@ -61,24 +61,30 @@ pub fn new(obs: ObsidianContext, board_config: BoardConfig) {
   //     #(board, effect.none())
   //   })
 
-  let board = new_board_from_config(board_config)
-  Model(obs:, board_config:, board:)
+  let #(board, effect) = new_board_from_config(board_config)
+  #(Model(obs:, board_config:, board:), effect)
 }
 
 pub fn update_board_config(board_view: Model, board_config: BoardConfig) {
-  Model(..board_view, board_config:, board: new_board_from_config(board_config))
+  let #(board, effect) = new_board_from_config(board_config)
+  #(Model(..board_view, board_config:, board:), effect)
 }
 
 fn new_board_from_config(board_config: BoardConfig) {
-  let pages = dataview.pages(board_config.query)
-
-  board.new_board(
-    group_keys: board_config.statuses,
-    cards: pages,
-    group_key_fn: group_key_fn,
-    update_group_key_fn: update_group_key_fn,
-    null_status: board_config.null_status,
-    done_status: board_config.done_status,
+  // TODO: This whole thing smacks of "effect"...
+  #(
+    board.new_board(
+      group_keys: board_config.statuses,
+      cards: [],
+      group_key_fn: group_key_fn,
+      update_group_key_fn: update_group_key_fn,
+      null_status: board_config.null_status,
+      done_status: board_config.done_status,
+    ),
+    effect.from(fn(dispatch) {
+      let pages = dataview.pages(board_config.query)
+      dispatch(DataviewLoadedPages(pages))
+    }),
   )
 }
 
@@ -95,6 +101,8 @@ fn update_group_key_fn(page: Page, new_status: String) {
 }
 
 pub type Msg {
+  DataviewLoadedPages(pages: List(Page))
+
   InternalLinkMsg(internal_link.Msg)
 
   UserStartedDraggingCard(event: Dynamic, card: Card(Page))
@@ -115,6 +123,13 @@ type Update =
 
 pub fn update(model: Model, msg: Msg) -> Update {
   case msg {
+    DataviewLoadedPages(pages:) -> {
+      #(
+        Model(..model, board: board.set_cards(model.board, pages)),
+        effect.none(),
+      )
+    }
+
     InternalLinkMsg(internal_link_msg) -> {
       let #(_internal_link_model, effect) =
         internal_link.update(internal_link_msg)
@@ -196,9 +211,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
       #(model, effect)
     }
 
-    BoardViewArchivedAll -> {
-      #(update_board_config(model, model.board_config), effect.none())
-    }
+    BoardViewArchivedAll -> update_board_config(model, model.board_config)
 
     UserClickedEditInNeoVim(page) -> {
       let effect =
@@ -230,7 +243,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
             card.inner.path
             |> dict.get(contents, _)
             |> option.from_result()
-          Card(Page(..card.inner, content: content))
+          Card(Page(..card.inner, content:))
         })
 
       #(Model(..model, board:), effect.none())
