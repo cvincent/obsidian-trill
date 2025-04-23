@@ -1,4 +1,3 @@
-import ffi/console
 import gleam/option.{type Option, Some}
 
 pub fn then(data, func) {
@@ -6,8 +5,6 @@ pub fn then(data, func) {
 }
 
 pub fn option_guard(option: Option(inner), default: a, callback: fn(inner) -> a) {
-  console.log("option_guard")
-  console.log(option)
   case option {
     Some(inner) -> callback(inner)
     _ -> default
