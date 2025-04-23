@@ -10,6 +10,7 @@ import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/int
+import gleam/javascript/promise
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regexp
@@ -33,36 +34,13 @@ pub type Model {
     obs: ObsidianContext,
     board_config: BoardConfig,
     board: Board(String, Page),
+    card_contents: Dict(String, String),
   )
 }
 
 pub fn new(obs: ObsidianContext, board_config: BoardConfig) {
-  // TODO: We will revisit this with a proper way to load content previews
-  // let assert Some(#(board, effect)) =
-  //   option.map(board_config, fn(board_config) {
-  //     let effect =
-  //       effect.from(fn(dispatch) {
-  //         list.map(pages, fn(page) {
-  //           vault.get_file_by_path(model.obs.vault, page.path)
-  //           |> result.try(fn(file) {
-  //             vault.cached_read(model.obs.vault, file)
-  //             |> promise.map(fn(content) { #(page.path, content) })
-  //             |> Ok()
-  //           })
-  //         })
-  //         |> result.values()
-  //         |> promise.await_list()
-  //         |> promise.map(fn(contents) {
-  //           dispatch(ObsidianReadPageContents(dict.from_list(contents)))
-  //         })
-  //         Nil
-  //       })
-
-  //     #(board, effect.none())
-  //   })
-
   let #(board, effect) = new_board_from_config(board_config)
-  #(Model(obs:, board_config:, board:), effect)
+  #(Model(obs:, board_config:, board:, card_contents: dict.new()), effect)
 }
 
 pub fn update_board_config(board_view: Model, board_config: BoardConfig) {
@@ -125,7 +103,29 @@ pub fn update(model: Model, msg: Msg) -> Update {
     DataviewLoadedPages(pages:) -> {
       #(
         Model(..model, board: board.set_cards(model.board, pages)),
-        effect.none(),
+        effect.from(fn(dispatch) {
+          pages
+          |> list.filter_map(fn(page) {
+            use <- bool.guard(
+              dict.has_key(model.card_contents, page.path),
+              Error(Nil),
+            )
+            use file <- result.map(vault.get_file_by_path(
+              model.obs.vault,
+              page.path,
+            ))
+
+            vault.cached_read(model.obs.vault, file)
+            |> promise.map(fn(content) { #(page.path, content) })
+            |> Ok()
+          })
+          |> result.values()
+          |> promise.await_list()
+          |> promise.map(fn(contents) {
+            dispatch(ObsidianReadPageContents(dict.from_list(contents)))
+          })
+          Nil
+        }),
       )
     }
 
@@ -236,16 +236,10 @@ pub fn update(model: Model, msg: Msg) -> Update {
     }
 
     ObsidianReadPageContents(contents) -> {
-      let board =
-        board.update_cards(model.board, fn(card) {
-          let content =
-            card.inner.path
-            |> dict.get(contents, _)
-            |> option.from_result()
-          Card(Page(..card.inner, content:))
-        })
-
-      #(Model(..model, board:), effect.none())
+      #(
+        Model(..model, card_contents: dict.merge(model.card_contents, contents)),
+        effect.none(),
+      )
     }
   }
 }
@@ -364,7 +358,7 @@ fn card_view(model: Model, card: Card(Page)) {
           InternalLinkMsg,
         ),
         task_info(card),
-        content_preview(card),
+        content_preview(model.card_contents, card),
         div("flex justify-end", [
           h.a(
             [
@@ -448,20 +442,26 @@ fn task_info(card: Card(Page)) {
   )
 }
 
-fn content_preview(card: Card(Page)) {
-  use content <- option_guard(card.inner.content, element.none())
-  let assert Ok(re) = regexp.from_string("\\n# .+\\n")
+fn content_preview(card_contents: Dict(String, String), card: Card(Page)) {
+  {
+    use content <- result.try(dict.get(card_contents, card.inner.path))
+    use re <- result.try(
+      regexp.from_string("\\n# .+\\n") |> result.replace_error(Nil),
+    )
 
-  case regexp.split(re, content) {
-    [_, content] ->
-      h.div(
-        [
-          attr.class(
-            "[display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden",
-          ),
-        ],
-        [h.text(content)],
-      )
-    _ -> element.none()
+    case regexp.split(re, content) {
+      [_, content] ->
+        h.div(
+          [
+            attr.class(
+              "[display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical] overflow-hidden",
+            ),
+          ],
+          [h.text(content)],
+        )
+        |> Ok()
+      _ -> Error(Nil)
+    }
   }
+  |> result.unwrap(element.none())
 }
