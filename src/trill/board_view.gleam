@@ -110,7 +110,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
           pages
           |> list.filter_map(fn(page) {
             use <- bool.guard(
-              !dict.has_key(model.card_contents, page.path),
+              dict.has_key(model.card_contents, page.path),
               Error(Nil),
             )
             use file <- result.map(vault.get_file_by_path(
