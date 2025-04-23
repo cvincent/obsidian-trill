@@ -110,7 +110,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
           pages
           |> list.filter_map(fn(page) {
             use <- bool.guard(
-              dict.has_key(model.card_contents, page.path),
+              !dict.has_key(model.card_contents, page.path),
               Error(Nil),
             )
             use file <- result.map(vault.get_file_by_path(
@@ -257,7 +257,7 @@ fn maybe_write_new_status(
   let #(model, effects) = update
 
   let effect = {
-    use <- bool.guard(result.is_ok(new_status), effect.none())
+    use <- bool.guard(!result.is_ok(new_status), effect.none())
     use card <- option_guard(card, effect.none())
     use _ <- effect.from
 
