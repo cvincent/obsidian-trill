@@ -2,7 +2,6 @@ import ffi/plinth_ext/crypto
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option}
-import gleam/result
 
 pub type BoardConfig {
   BoardConfig(id: String, name: String, query: String, statuses: List(String))
