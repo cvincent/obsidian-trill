@@ -1,4 +1,3 @@
-import ffi/console
 import ffi/dataview.{type Page}
 import gleam/dynamic/decode
 import gleam/json
