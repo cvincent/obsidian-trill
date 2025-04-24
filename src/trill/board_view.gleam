@@ -1,5 +1,6 @@
 import board.{type Board, type Card, Card, TargetPlaceholder}
 import board_config.{type BoardConfig, BoardConfig}
+import card_filter
 import ffi/dataview.{type Page, Page}
 import ffi/neovim
 import ffi/obsidian/vault
@@ -29,7 +30,7 @@ import plinth/browser/event as pevent
 import plinth/javascript/console
 import tempo
 import trill/internal_link
-import util.{option_guard}
+import util.{guard_element, option_guard}
 
 pub type Model {
   Model(
@@ -293,7 +294,7 @@ fn maybe_write_new_status(
 
 pub fn view(model: Model) {
   div(
-    "flex h-full",
+    "flex h-full px-4",
     list.map(statuses_to_show(model), fn(status) {
       let cards =
         dict.get(model.board.groups, status)
@@ -313,7 +314,8 @@ pub fn view(model: Model) {
               ]),
             ]),
           ],
-          list.map(cards, card_view(model, _))
+          cards
+            |> list.filter_map(card_view(model, _))
             |> list.append([
               h.div(
                 [
@@ -331,6 +333,11 @@ pub fn view(model: Model) {
 
 fn card_view(model: Model, card: Card(Page)) {
   let page = card.inner
+
+  use <- bool.guard(
+    !card_filter.match(model.board_config.filter, page),
+    Error(Nil),
+  )
 
   let invisible = case card {
     Card(_) -> attr.none()
@@ -380,6 +387,7 @@ fn card_view(model: Model, card: Card(Page)) {
       ]),
     ],
   )
+  |> Ok()
 }
 
 fn div(classes: String, contents: List(Element(Msg))) {
@@ -388,13 +396,6 @@ fn div(classes: String, contents: List(Element(Msg))) {
 
 fn event_on(event_name: String, msg: Msg) {
   event.on(event_name, fn(_ev) { Ok(msg) })
-}
-
-fn guard_element(cond: Bool, element) {
-  case cond {
-    True -> element
-    False -> element.none()
-  }
 }
 
 fn statuses_to_show(model: Model) {

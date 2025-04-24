@@ -1,6 +1,7 @@
 import board_config.{type BoardConfig}
 import board_config_form
 import components
+import ffi/console
 import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
@@ -24,6 +25,10 @@ import trill/toolbar
 import util
 
 pub const view_name = "trill"
+
+pub const file_changed_debounce = "file-changed-debounce"
+
+pub const save_filter_debounce = "save-filter-debounce"
 
 pub fn app() -> App(ObsidianContext, Model, Msg) {
   lustre.application(init, update, view)
@@ -69,6 +74,7 @@ pub type Msg {
   UserClickedDeleteBoardConfigConfirm
 
   ObsidianReportedFileChange
+  FilterSaveDebounced
 }
 
 type Update =
@@ -123,7 +129,7 @@ pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
         |> list.each(fn(event) {
           vault.on(model.obs.vault, event, fn(_file) {
             let _ =
-              global.get_timer_id("file-changed-debounce")
+              global.get_timer_id(file_changed_debounce)
               |> result.try(fn(id) { pglobal.clear_timeout(id) |> Ok() })
 
             let id =
@@ -131,7 +137,7 @@ pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
                 dispatch(ObsidianReportedFileChange)
               })
 
-            global.set_global("file-changed-debounce", id)
+            global.set_global(file_changed_debounce, id)
           })
         })
       }),
@@ -149,6 +155,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     ToolbarMsg(toolbar.ToolbarDisplayedModal(modal) as toolbar_msg) ->
       #(Model(..model, modal: Some(modal)), effect.none())
       |> toolbar_update(toolbar_msg)
+
+    ToolbarMsg(toolbar.UserUpdatedFilterSearch(_) as toolbar_msg) ->
+      #(model, debounce_filter_save())
+      |> toolbar_update(toolbar_msg)
+      |> update_board_view_board_config()
+
+    ToolbarMsg(toolbar.UserClickedClearFilterSearch as toolbar_msg) ->
+      #(model, debounce_filter_save())
+      |> toolbar_update(toolbar_msg)
+      |> update_board_view_board_config()
 
     ToolbarMsg(toolbar_msg) ->
       #(model, effect.none())
@@ -220,10 +236,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> close_modal()
     }
 
-    ObsidianReportedFileChange -> {
+    ObsidianReportedFileChange ->
       #(model, effect.none())
       |> update_board_view_board_config()
-    }
+
+    FilterSaveDebounced ->
+      #(model, effect.none())
+      |> save_board_configs()
   }
 }
 
@@ -245,6 +264,18 @@ fn toolbar_update(update: Update, toolbar_msg: toolbar.Msg) {
 
 fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) {
   #(Model(..update.0, toolbar:), update.1)
+}
+
+fn debounce_filter_save() {
+  effect.from(fn(dispatch) {
+    let _ =
+      global.get_timer_id(save_filter_debounce)
+      |> result.try(fn(id) { pglobal.clear_timeout(id) |> Ok() })
+
+    let id = pglobal.set_timeout(1000, fn() { dispatch(FilterSaveDebounced) })
+
+    global.set_global(save_filter_debounce, id)
+  })
 }
 
 fn board_view_update(update: Update, board_view_msg: board_view.Msg) {
@@ -341,5 +372,8 @@ fn board_view(model: Model) -> Element(Msg) {
     |> option.unwrap(element.none())
     |> element.map(BoardViewMsg)
 
-  h.div([attr.class("h-full")], [toolbar, board_view])
+  h.div([attr.class("h-full absolute top-10 right-0 bottom-0 left-0")], [
+    h.div([attr.class("px-4")], [toolbar]),
+    h.div([attr.class("w-full h-full overflow-x-auto")], [board_view]),
+  ])
 }

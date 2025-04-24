@@ -170,6 +170,21 @@
   .invisible {
     visibility: hidden;
   }
+  .absolute {
+    position: absolute;
+  }
+  .top-10 {
+    top: calc(var(--spacing) * 10);
+  }
+  .right-0 {
+    right: calc(var(--spacing) * 0);
+  }
+  .bottom-0 {
+    bottom: calc(var(--spacing) * 0);
+  }
+  .left-0 {
+    left: calc(var(--spacing) * 0);
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -203,6 +218,9 @@
   .mb-2 {
     margin-bottom: calc(var(--spacing) * 2);
   }
+  .mb-4 {
+    margin-bottom: calc(var(--spacing) * 4);
+  }
   .ml-1 {
     margin-left: calc(var(--spacing) * 1);
   }
@@ -224,6 +242,9 @@
   .w-2\/3 {
     width: calc(2/3 * 100%);
   }
+  .w-full {
+    width: 100%;
+  }
   .max-w-2xl {
     max-width: var(--container-2xl);
   }
@@ -242,6 +263,12 @@
   .items-center {
     align-items: center;
   }
+  .justify-between {
+    justify-content: space-between;
+  }
+  .justify-center {
+    justify-content: center;
+  }
   .justify-end {
     justify-content: flex-end;
   }
@@ -257,8 +284,14 @@
   .justify-self-center {
     justify-self: center;
   }
+  .justify-self-end {
+    justify-self: flex-end;
+  }
   .overflow-hidden {
     overflow: hidden;
+  }
+  .overflow-x-auto {
+    overflow-x: auto;
   }
   .rounded-full {
     border-radius: calc(infinity * 1px);
@@ -272,11 +305,17 @@
   .bg-\(--background-secondary-alt\) {
     background-color: var(--background-secondary-alt);
   }
+  .p-2 {
+    padding: calc(var(--spacing) * 2);
+  }
   .p-4 {
     padding: calc(var(--spacing) * 4);
   }
   .px-2 {
     padding-inline: calc(var(--spacing) * 2);
+  }
+  .px-4 {
+    padding-inline: calc(var(--spacing) * 4);
   }
   .pr-4 {
     padding-right: calc(var(--spacing) * 4);
@@ -306,11 +345,26 @@
   .text-\(color\:--text-muted\) {
     color: var(--text-muted);
   }
+  .filter {
+    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
+  }
+  .\[--icon-color\:var\(--color-orange\)\] {
+    --icon-color: var(--color-orange);
+  }
+  .\[--icon-color\:var\(--icon-color-active\)\] {
+    --icon-color: var(--icon-color-active);
+  }
   .\[--icon-size\:var\(--icon-s\)\] {
     --icon-size: var(--icon-s);
   }
+  .\[--icon-size\:var\(--icon-xs\)\] {
+    --icon-size: var(--icon-xs);
+  }
   .\[--icon-stroke\:var\(--icon-s-stroke-width\)\] {
     --icon-stroke: var(--icon-s-stroke-width);
+  }
+  .\[--icon-stroke\:var\(--icon-xs-stroke-width\)\] {
+    --icon-stroke: var(--icon-xs-stroke-width);
   }
   .\[-webkit-box-orient\:vertical\] {
     -webkit-box-orient: vertical;
@@ -318,4 +372,44 @@
   .\[-webkit-line-clamp\:3\] {
     -webkit-line-clamp: 3;
   }
+}
+@property --tw-blur {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-brightness {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-contrast {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-grayscale {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-hue-rotate {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-invert {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-opacity {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-saturate {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-sepia {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-drop-shadow {
+  syntax: "*";
+  inherits: false;
 }

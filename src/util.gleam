@@ -1,4 +1,5 @@
 import gleam/option.{type Option, Some}
+import lustre/element
 
 pub fn then(data, func) {
   func(data)
@@ -29,5 +30,12 @@ pub fn try_or_nil(
   case result {
     Ok(x) -> fun(x)
     Error(_err) -> Error(Nil)
+  }
+}
+
+pub fn guard_element(cond: Bool, element) {
+  case cond {
+    True -> element
+    False -> element.none()
   }
 }

@@ -1,5 +1,6 @@
 import board_config.{type BoardConfig, BoardConfig}
 import board_config_form
+import card_filter.{type CardFilter, CardFilter}
 import components
 import confirm_modal
 import context_menu
@@ -11,9 +12,11 @@ import gleam/string
 import icons
 import lustre/attribute as attr
 import lustre/effect.{type Effect}
+import lustre/element
 import lustre/element/html as h
 import lustre/event
 import obsidian_context.{type ObsidianContext}
+import util.{guard_element}
 
 pub const user_submitted_new_board_form = "user-submitted-new-board-form"
 
@@ -28,12 +31,14 @@ pub type Model {
     obs: ObsidianContext,
     board_config: BoardConfig,
     board_configs: List(BoardConfig),
+    show_filter: Bool,
   )
 }
 
 pub fn maybe_toolbar(obs: ObsidianContext, board_configs: List(BoardConfig)) {
   case list.first(board_configs) {
-    Ok(board_config) -> Some(Model(obs:, board_configs:, board_config:))
+    Ok(board_config) ->
+      Some(Model(obs:, board_configs:, board_config:, show_filter: False))
     Error(Nil) -> None
   }
 }
@@ -60,8 +65,10 @@ pub fn update_current_board_config(
   let board_configs =
     toolbar.board_configs
     |> list.map(fn(bc) {
+      let id = toolbar.board_config.id
+
       case bc {
-        bc if bc == toolbar.board_config -> updated_board_config
+        bc if bc.id == id -> updated_board_config
         bc -> bc
       }
     })
@@ -87,6 +94,10 @@ pub type Msg {
   UserClickedEditBoard
   UserClickedDeleteBoard
   ToolbarDisplayedModal(Modal)
+
+  UserClickedToggleFilter(ev: Dynamic)
+  UserUpdatedFilterSearch(search: String)
+  UserClickedClearFilterSearch
 }
 
 type Update =
@@ -144,6 +155,34 @@ pub fn update(model: Model, msg: Msg) -> Update {
       |> show_confirm_delete_modal()
 
     ToolbarDisplayedModal(_modal) -> #(model, effect.none())
+
+    UserClickedToggleFilter(_) -> #(
+      Model(..model, show_filter: !model.show_filter),
+      effect.none(),
+    )
+
+    UserUpdatedFilterSearch(search) -> {
+      let search = case search {
+        "" -> None
+        search -> Some(search)
+      }
+
+      #(
+        update_current_board_config(
+          model,
+          BoardConfig(..model.board_config, filter: CardFilter(search:)),
+        ),
+        effect.none(),
+      )
+    }
+
+    UserClickedClearFilterSearch -> #(
+      update_current_board_config(
+        model,
+        BoardConfig(..model.board_config, filter: CardFilter(search: None)),
+      ),
+      effect.none(),
+    )
   }
 }
 
@@ -220,13 +259,23 @@ fn display_modal(modal: Modal) {
 }
 
 pub fn view(model: Model) {
-  h.div([attr.class("flex justify-start mb-2 gap-2")], [
+  h.div([], [
+    h.div([attr.class("flex justify-between mb-4 gap-2")], [
+      toolbar_left(model),
+      toolbar_right(model),
+    ]),
+    filter(model),
+  ])
+}
+
+fn toolbar_left(model: Model) {
+  h.div([attr.class("flex justify-start gap-2")], [
     h.select(
       [attr.class("dropdown"), event.on_input(UserSelectedBoardConfig)],
       list.map(model.board_configs, fn(board_config) {
         h.option(
           [
-            attr.selected(board_config == model.board_config),
+            attr.selected(board_config.id == model.board_config.id),
             attr.value(board_config.id),
           ],
           board_config.name,
@@ -243,4 +292,67 @@ pub fn view(model: Model) {
       [icons.icon("ellipsis-vertical")],
     ),
   ])
+}
+
+fn toolbar_right(model: Model) {
+  let filter_icon_class =
+    "clickable-icon [--icon-size:var(--icon-xs)] [--icon-stroke:var(--icon-xs-stroke-width)] justify-self-end"
+
+  let filter_icon_class = case
+    card_filter.any(model.board_config.filter),
+    model.show_filter
+  {
+    True, _ -> filter_icon_class <> " [--icon-color:var(--color-orange)]"
+    _, True -> filter_icon_class <> " [--icon-color:var(--icon-color-active)]"
+    _, _ -> filter_icon_class
+  }
+
+  h.div([attr.class("flex justify-end gap-2")], [
+    h.div(
+      [
+        attr.class(filter_icon_class),
+        event.on("click", fn(ev) { Ok(UserClickedToggleFilter(ev)) }),
+      ],
+      [icons.icon("funnel")],
+    ),
+  ])
+}
+
+fn filter(model: Model) {
+  let filter = model.board_config.filter
+
+  case model.show_filter {
+    False -> element.none()
+    True ->
+      h.div([], [
+        h.div(
+          [
+            attr.class(
+              "flex justify-center mb-4 bg-(--background-secondary) rounded-md p-2",
+            ),
+          ],
+          [
+            h.div([attr.class("search-input-container")], [
+              h.input([
+                attr.class("min-w-80"),
+                attr.type_("search"),
+                attr.placeholder("Search..."),
+                attr.value(option.unwrap(filter.search, "")),
+                event.on_input(UserUpdatedFilterSearch),
+              ]),
+              guard_element(
+                option.is_some(filter.search),
+                h.div(
+                  [
+                    attr.class("search-input-clear-button"),
+                    event.on_click(UserClickedClearFilterSearch),
+                  ],
+                  [],
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ])
+  }
 }
