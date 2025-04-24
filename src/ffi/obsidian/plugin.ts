@@ -8,6 +8,7 @@ import {
 } from "obsidian";
 import { Event } from "build/dev/javascript/obsidian_plugin/ffi/obsidian/html_element.mjs";
 import { LustreView } from "./view";
+import { None, Some } from "build/dev/javascript/gleam_stdlib/gleam/option.mjs";
 
 export function register_markdown_post_processor(
   plugin: Plugin,
@@ -71,5 +72,10 @@ export function save_data(plugin: Plugin, data: string) {
 
 export async function load_data(plugin: Plugin, callback: (data: any) => void) {
   let data = await plugin.loadData();
-  callback(data);
+
+  if (data) {
+    callback(new Some(JSON.stringify(data)));
+  } else {
+    callback(new None());
+  }
 }

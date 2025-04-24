@@ -1,6 +1,6 @@
-import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option.{type Option}
 import gleam/result
 
 pub type BoardConfig {
@@ -31,18 +31,23 @@ pub const new_board_config = BoardConfig("", "", statuses)
 pub fn from_json() {
   use name <- decode.field("name", decode.string)
   use query <- decode.field("query", decode.string)
+  use statuses <- decode.optional_field(
+    "statuses",
+    statuses,
+    decode.list(decode.string),
+  )
   decode.success(BoardConfig(name:, query:, statuses: statuses))
 }
 
-pub fn list_from_json(data: Dynamic) {
+pub fn list_from_json(data: Option(String)) {
+  let data = option.unwrap(data, "{\"board_configs\": []}")
+
   let data_decoder = {
     use board_configs <- decode.field("board_configs", decode.list(from_json()))
     decode.success(board_configs)
   }
 
   data
-  |> decode.run(decode.string)
-  |> result.unwrap("{\"board_configs\": []}")
   |> json.parse(data_decoder)
   |> result.unwrap([])
 }
@@ -51,12 +56,12 @@ pub fn to_json(board_config: BoardConfig) {
   json.object([
     #("name", json.string(board_config.name)),
     #("query", json.string(board_config.query)),
+    #("statuses", json.array(board_config.statuses, json.string)),
   ])
 }
 
 pub fn list_to_json(board_configs: List(BoardConfig)) {
   json.object([#("board_configs", json.array(board_configs, to_json))])
-  |> json.to_string()
 }
 
 pub fn update(

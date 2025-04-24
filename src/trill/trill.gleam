@@ -171,7 +171,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     UserClickedDeleteBoardConfigConfirm -> {
       let toolbar =
-        option.then(model.toolbar, toolbar.delete_current_board_config(_))
+        option.then(model.toolbar, toolbar.delete_current_board_config)
 
       #(model, effect.none())
       |> update_toolbar(toolbar)

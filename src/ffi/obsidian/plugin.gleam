@@ -7,7 +7,7 @@ import ffi/obsidian/markdown_post_processor_context.{
 import ffi/obsidian/vault.{type Vault}
 import ffi/obsidian/view.{type View}
 import ffi/obsidian/workspace.{type Workspace}
-import gleam/dynamic.{type Dynamic}
+import gleam/option.{type Option}
 
 pub type Plugin
 
@@ -57,4 +57,4 @@ pub fn get_app(plugin: Plugin) -> App
 pub fn save_data(plugin: Plugin, data: any) -> void
 
 @external(javascript, "src/ffi/obsidian/plugin.ts", "load_data")
-pub fn load_data(plugin: Plugin, callback: fn(Dynamic) -> Nil) -> Nil
+pub fn load_data(plugin: Plugin, callback: fn(Option(String)) -> Nil) -> Nil
