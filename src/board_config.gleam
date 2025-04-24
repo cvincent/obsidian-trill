@@ -33,11 +33,7 @@ pub fn from_json() {
   use id <- decode.field("id", decode.string)
   use name <- decode.field("name", decode.string)
   use query <- decode.field("query", decode.string)
-  use statuses <- decode.optional_field(
-    "statuses",
-    statuses,
-    decode.list(decode.string),
-  )
+  use statuses <- decode.field("statuses", decode.list(decode.string))
   decode.success(BoardConfig(id:, name:, query:, statuses: statuses))
 }
 
