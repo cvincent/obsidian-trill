@@ -233,6 +233,9 @@
   .min-w-80 {
     min-width: calc(var(--spacing) * 80);
   }
+  .cursor-grab {
+    cursor: grab;
+  }
   .flex-wrap {
     flex-wrap: wrap;
   }

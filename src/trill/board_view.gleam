@@ -345,7 +345,7 @@ fn card_view(model: Model, card: Card(Page)) {
 
   h.div(
     [
-      attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md"),
+      attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md cursor-grab"),
       attr.attribute("draggable", "true"),
       event.on("dragstart", fn(ev) { Ok(UserStartedDraggingCard(ev, card)) }),
       event.on("dragend", fn(ev) { Ok(UserStoppedDraggingCard(ev)) }),
