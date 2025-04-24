@@ -1,7 +1,6 @@
 import ffi/obsidian/menu
 import gleam/dynamic.{type Dynamic}
 import gleam/list
-import lustre/effect
 
 pub fn show(ev: Dynamic, items: List(#(String, String, fn() -> Nil))) {
   let menu = menu.new_menu()
