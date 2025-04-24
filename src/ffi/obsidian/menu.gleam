@@ -1,4 +1,3 @@
-import ffi/obsidian/html_element.{type JSEvent}
 import gleam/dynamic.{type Dynamic}
 
 pub type Menu

@@ -1,5 +1,4 @@
 import ffi/obsidian/file.{type File}
-import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/option.{type Option}
 
