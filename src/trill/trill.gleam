@@ -132,7 +132,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     UserSubmittedNewBoardConfigForm(ev) -> {
       use new_board_config <- util.result_guard(
-        decode.run(ev, decode.at(["detail"], board_config.from_json())),
+        decode.run(
+          ev,
+          decode.at(["detail"], board_config.board_config_decoder()),
+        ),
         #(model, effect.none()),
       )
 
@@ -152,7 +155,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     UserSubmittedEditBoardConfigForm(ev) -> {
       use updated_board_config <- util.result_guard(
-        decode.run(ev, decode.at(["detail"], board_config.from_json())),
+        decode.run(
+          ev,
+          decode.at(["detail"], board_config.board_config_decoder()),
+        ),
         #(model, effect.none()),
       )
 

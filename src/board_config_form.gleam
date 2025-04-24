@@ -46,7 +46,7 @@ pub fn element(
     None -> attr.none()
     Some(given_board_config) -> {
       let board_config_json =
-        board_config.to_json(given_board_config)
+        board_config.encode_board_config(given_board_config)
         |> json.to_string()
 
       attr.attribute("board-config", board_config_json)
@@ -99,7 +99,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         no_change,
       )
       use board_config <- util.result_guard(
-        json.parse(board_config, board_config.from_json()),
+        json.parse(board_config, board_config.board_config_decoder()),
         no_change,
       )
       #(Model(..model, board_config:), effect.none())
@@ -137,7 +137,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Some(event_name) -> {
           #(
             model,
-            event.emit(event_name, board_config.to_json(model.board_config)),
+            event.emit(
+              event_name,
+              board_config.encode_board_config(model.board_config),
+            ),
           )
         }
       }
