@@ -44,7 +44,7 @@ pub fn main(plugin: Plugin) {
     fn(_) { Nil },
   )
 
-  plugin.add_ribbon_button(plugin, "dice", "Hello world", fn() {
+  plugin.add_ribbon_button(plugin, "kanban", "Trill", fn() {
     let workspace = plugin.get_workspace(plugin)
     let leaves = workspace.get_leaves_of_type(workspace, trill.view_name)
 
