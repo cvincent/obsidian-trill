@@ -81,7 +81,7 @@ pub type Msg {
 fn init(_) {
   #(
     Model(
-      board_config: board_config.new_board_config,
+      board_config: board_config.new(),
       on_submit: None,
       submit_label: "Save",
     ),

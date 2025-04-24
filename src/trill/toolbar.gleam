@@ -80,7 +80,7 @@ pub fn delete_current_board_config(toolbar: Model) {
 }
 
 pub type Msg {
-  UserSelectedBoardConfig(board_config_name: String)
+  UserSelectedBoardConfig(id: String)
   UserClickedBoardMenu(ev: Dynamic)
   UserClickedNewBoard
   UserClickedDuplicateBoard
@@ -94,9 +94,8 @@ type Update =
 
 pub fn update(model: Model, msg: Msg) -> Update {
   case msg {
-    UserSelectedBoardConfig(board_config_name) -> {
-      let board_config =
-        list.find(model.board_configs, fn(bc) { bc.name == board_config_name })
+    UserSelectedBoardConfig(id) -> {
+      let board_config = list.find(model.board_configs, fn(bc) { bc.id == id })
 
       case board_config {
         Ok(board_config) -> #(Model(..model, board_config:), effect.none())
@@ -116,7 +115,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
     UserClickedNewBoard ->
       #(model, effect.none())
       |> show_board_config_form_modal(
-        board_config.new_board_config,
+        board_config.new(),
         user_submitted_new_board_form,
         "Create Board",
       )
@@ -228,8 +227,7 @@ pub fn view(model: Model) {
         h.option(
           [
             attr.selected(board_config == model.board_config),
-            // TODO: This should be a UUID
-            attr.value(board_config.name),
+            attr.value(board_config.id),
           ],
           board_config.name,
         )

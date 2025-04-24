@@ -1,10 +1,11 @@
+import ffi/plinth_ext/crypto
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option}
 import gleam/result
 
 pub type BoardConfig {
-  BoardConfig(name: String, query: String, statuses: List(String))
+  BoardConfig(id: String, name: String, query: String, statuses: List(String))
 }
 
 pub const null_status = "none"
@@ -21,14 +22,15 @@ pub const statuses = [
   done_status,
 ]
 
-pub const new_board_config = BoardConfig("", "", statuses)
-
 // TODO: Make these more consistent; it should be clear when we're working with
 // strings vs dynamics
 
-// TODO: We need UUIDs
+pub fn new() {
+  BoardConfig(id: crypto.random_uuid(), name: "", query: "", statuses:)
+}
 
 pub fn from_json() {
+  use id <- decode.field("id", decode.string)
   use name <- decode.field("name", decode.string)
   use query <- decode.field("query", decode.string)
   use statuses <- decode.optional_field(
@@ -36,7 +38,7 @@ pub fn from_json() {
     statuses,
     decode.list(decode.string),
   )
-  decode.success(BoardConfig(name:, query:, statuses: statuses))
+  decode.success(BoardConfig(id:, name:, query:, statuses: statuses))
 }
 
 pub fn list_from_json(data: Option(String)) {
@@ -54,6 +56,7 @@ pub fn list_from_json(data: Option(String)) {
 
 pub fn to_json(board_config: BoardConfig) {
   json.object([
+    #("id", json.string(board_config.id)),
     #("name", json.string(board_config.name)),
     #("query", json.string(board_config.query)),
     #("statuses", json.array(board_config.statuses, json.string)),
