@@ -1,7 +1,6 @@
 import board_config.{type BoardConfig}
 import board_config_form
 import components
-import ffi/console
 import ffi/obsidian/modal.{type Modal}
 import ffi/obsidian/plugin
 import ffi/obsidian/vault
