@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-23.11";
-    gleam.url = "nixpkgs/f0295845e58ada369322524631821b01c0db13a7";
+    gleam.url = "nixpkgs/67d2b8200c828903b36a6dd0fb952fe424aa0606";
   };
 
   outputs =

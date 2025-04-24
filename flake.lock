@@ -2,16 +2,16 @@
   "nodes": {
     "gleam": {
       "locked": {
-        "lastModified": 1739834344,
-        "narHash": "sha256-PUAcU3YlKNFYrBBHkqshO4wRfMunzhMTEIH1dyhjTtk=",
+        "lastModified": 1744219666,
+        "narHash": "sha256-6F/IaCjitLkWfbR3prNYv+ytDVQRRGicHO9/IRcMcUU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f0295845e58ada369322524631821b01c0db13a7",
+        "rev": "67d2b8200c828903b36a6dd0fb952fe424aa0606",
         "type": "github"
       },
       "original": {
         "id": "nixpkgs",
-        "rev": "f0295845e58ada369322524631821b01c0db13a7",
+        "rev": "67d2b8200c828903b36a6dd0fb952fe424aa0606",
         "type": "indirect"
       }
     },
