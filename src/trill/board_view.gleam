@@ -1,4 +1,4 @@
-import board.{type Board, type Card, Card}
+import board.{type Board, type Card, Card, TargetPlaceholder}
 import board_config.{type BoardConfig, BoardConfig}
 import ffi/dataview.{type Page, Page}
 import ffi/neovim
@@ -338,10 +338,9 @@ fn card_view(model: Model, card: Card(Page)) {
   }
 
   let dragover = case card {
-    Card(_) ->
+    TargetPlaceholder(_) -> attr.none()
+    _ ->
       event.on("dragover", fn(ev) { Ok(UserDraggedCardOverTarget(ev, card)) })
-
-    _ -> attr.none()
   }
 
   h.div(
