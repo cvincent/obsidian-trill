@@ -39,33 +39,8 @@ pub const statuses = [
   done_status,
 ]
 
-// TODO: Make these more consistent; it should be clear when we're working with
-// strings vs dynamics
-
 pub fn new() {
   BoardConfig(id: crypto.random_uuid(), name: "", query: "", statuses:)
-}
-
-pub fn list_from_json(data: Option(String)) {
-  let data = option.unwrap(data, "{\"board_configs\": []}")
-
-  let data_decoder = {
-    use board_configs <- decode.field(
-      "board_configs",
-      decode.list(board_config_decoder()),
-    )
-    decode.success(board_configs)
-  }
-
-  data
-  |> json.parse(data_decoder)
-  |> result.unwrap([])
-}
-
-pub fn list_to_json(board_configs: List(BoardConfig)) {
-  json.object([
-    #("board_configs", json.array(board_configs, encode_board_config)),
-  ])
 }
 
 pub fn update(

@@ -1,4 +1,4 @@
-import board_config
+import board_config.{type BoardConfig}
 import board_config_form
 import components
 import ffi/obsidian/modal.{type Modal}
@@ -7,6 +7,7 @@ import ffi/obsidian/vault
 import ffi/plinth_ext/global
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -26,6 +27,27 @@ pub const view_name = "trill"
 
 pub fn app() -> App(ObsidianContext, Model, Msg) {
   lustre.application(init, update, view)
+}
+
+type TrillSave {
+  TrillSave(board_configs: List(BoardConfig))
+}
+
+fn encode_trill_save(trill_save: TrillSave) -> json.Json {
+  json.object([
+    #(
+      "board_configs",
+      json.array(trill_save.board_configs, board_config.encode_board_config),
+    ),
+  ])
+}
+
+fn trill_save_decoder() -> decode.Decoder(TrillSave) {
+  use board_configs <- decode.field(
+    "board_configs",
+    decode.list(board_config.board_config_decoder()),
+  )
+  decode.success(TrillSave(board_configs:))
 }
 
 pub type Model {
@@ -53,7 +75,13 @@ type Update =
   #(Model, Effect(Msg))
 
 pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
-  let board_configs = board_config.list_from_json(obs.saved_data)
+  let board_configs =
+    obs.saved_data
+    |> option.unwrap("{\"board_configs\": []}")
+    |> json.parse(trill_save_decoder())
+    |> result.unwrap(TrillSave([]))
+    |> util.then(fn(trill_save) { trill_save.board_configs })
+
   let toolbar = toolbar.maybe_toolbar(obs, board_configs)
 
   let #(board_view, board_view_effect) =
@@ -260,7 +288,7 @@ fn save_board_configs(update: Update) -> Update {
   let effect =
     option.map(model.toolbar, fn(toolbar) {
       use _ <- effect.from
-      let save_data = board_config.list_to_json(toolbar.board_configs)
+      let save_data = encode_trill_save(TrillSave(toolbar.board_configs))
       plugin.save_data(model.obs.plugin, save_data)
     })
     |> option.unwrap(effect.none())
