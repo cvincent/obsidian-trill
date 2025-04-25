@@ -4,10 +4,13 @@ import card_filter.{type CardFilter, CardFilter}
 import components
 import confirm_modal
 import context_menu
+import ffi/dataview
 import ffi/obsidian/modal.{type Modal}
 import gleam/dynamic.{type Dynamic}
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import icons
 import lustre/attribute as attr
@@ -32,13 +35,20 @@ pub type Model {
     board_config: BoardConfig,
     board_configs: List(BoardConfig),
     show_filter: Bool,
+    board_tags: List(String),
   )
 }
 
 pub fn maybe_toolbar(obs: ObsidianContext, board_configs: List(BoardConfig)) {
   case list.first(board_configs) {
     Ok(board_config) ->
-      Some(Model(obs:, board_configs:, board_config:, show_filter: False))
+      Some(Model(
+        obs:,
+        board_configs:,
+        board_config:,
+        show_filter: False,
+        board_tags: tags_for_query(board_config.query),
+      ))
     Error(Nil) -> None
   }
 }
@@ -55,7 +65,11 @@ pub fn add_board_config(toolbar: Model, board_config: BoardConfig) {
 }
 
 pub fn select_board_config(toolbar: Model, board_config: BoardConfig) {
-  Model(..toolbar, board_config:)
+  Model(
+    ..toolbar,
+    board_config:,
+    board_tags: tags_for_query(board_config.query),
+  )
 }
 
 pub fn update_current_board_config(
@@ -73,7 +87,12 @@ pub fn update_current_board_config(
       }
     })
 
-  Model(..toolbar, board_configs:, board_config: updated_board_config)
+  Model(
+    ..toolbar,
+    board_configs:,
+    board_config: updated_board_config,
+    board_tags: tags_for_query(updated_board_config.query),
+  )
 }
 
 pub fn delete_current_board_config(toolbar: Model) {
@@ -81,9 +100,23 @@ pub fn delete_current_board_config(toolbar: Model) {
     list.filter(toolbar.board_configs, fn(bc) { bc != toolbar.board_config })
 
   case list.first(toolbar.board_configs) {
-    Ok(board_config) -> Some(Model(..toolbar, board_config:, board_configs:))
+    Ok(board_config) ->
+      Some(
+        Model(
+          ..toolbar,
+          board_config:,
+          board_configs:,
+          board_tags: tags_for_query(board_config.query),
+        ),
+      )
     Error(Nil) -> None
   }
+}
+
+fn tags_for_query(query: String) {
+  dataview.pages(query)
+  |> list.flat_map(fn(p) { p.tags })
+  |> list.unique()
 }
 
 pub type Msg {
@@ -98,6 +131,8 @@ pub type Msg {
   UserClickedToggleFilter(ev: Dynamic)
   UserUpdatedFilterSearch(search: String)
   UserClickedClearFilterSearch
+  UserClickedToggleFilterTag(ev: Dynamic, tag: String)
+  UserClickedSelectAllFilterTags
 }
 
 type Update =
@@ -109,7 +144,14 @@ pub fn update(model: Model, msg: Msg) -> Update {
       let board_config = list.find(model.board_configs, fn(bc) { bc.id == id })
 
       case board_config {
-        Ok(board_config) -> #(Model(..model, board_config:), effect.none())
+        Ok(board_config) -> #(
+          Model(
+            ..model,
+            board_config:,
+            board_tags: tags_for_query(board_config.query),
+          ),
+          effect.none(),
+        )
         Error(_) -> #(model, effect.none())
       }
     }
@@ -170,7 +212,10 @@ pub fn update(model: Model, msg: Msg) -> Update {
       #(
         update_current_board_config(
           model,
-          BoardConfig(..model.board_config, filter: CardFilter(search:)),
+          BoardConfig(
+            ..model.board_config,
+            filter: CardFilter(..model.board_config.filter, search:),
+          ),
         ),
         effect.none(),
       )
@@ -179,7 +224,58 @@ pub fn update(model: Model, msg: Msg) -> Update {
     UserClickedClearFilterSearch -> #(
       update_current_board_config(
         model,
-        BoardConfig(..model.board_config, filter: CardFilter(search: None)),
+        BoardConfig(
+          ..model.board_config,
+          filter: CardFilter(..model.board_config.filter, search: None),
+        ),
+      ),
+      effect.none(),
+    )
+
+    UserClickedToggleFilterTag(ev, tag) -> {
+      let ctrl =
+        ev
+        |> decode.run(decode.at(["ctrlKey"], decode.bool))
+        |> result.unwrap(False)
+
+      let tags = case model.board_config.filter.tags {
+        [] -> list.filter(model.board_tags, fn(t) { t != tag })
+        tags ->
+          case list.contains(tags, tag) {
+            True -> list.filter(tags, fn(t) { t != tag })
+            False -> list.append(tags, [tag])
+          }
+      }
+
+      let tags = case ctrl {
+        True -> [tag]
+        False -> tags
+      }
+
+      let tags = case list.all(model.board_tags, list.contains(tags, _)) {
+        True -> []
+        _ -> tags
+      }
+
+      #(
+        update_current_board_config(
+          model,
+          BoardConfig(
+            ..model.board_config,
+            filter: CardFilter(..model.board_config.filter, tags:),
+          ),
+        ),
+        effect.none(),
+      )
+    }
+
+    UserClickedSelectAllFilterTags -> #(
+      update_current_board_config(
+        model,
+        BoardConfig(
+          ..model.board_config,
+          filter: CardFilter(..model.board_config.filter, tags: []),
+        ),
       ),
       effect.none(),
     )
@@ -328,13 +424,13 @@ fn filter(model: Model) {
         h.div(
           [
             attr.class(
-              "flex justify-center mb-4 bg-(--background-secondary) rounded-md p-2",
+              "flex justify-between items-start mb-4 bg-(--background-secondary) rounded-md p-2",
             ),
           ],
           [
-            h.div([attr.class("search-input-container")], [
+            h.div([attr.class("search-input-container basis-1/4")], [
               h.input([
-                attr.class("min-w-80"),
+                attr.class("w-full"),
                 attr.type_("search"),
                 attr.placeholder("Search..."),
                 attr.value(option.unwrap(filter.search, "")),
@@ -350,6 +446,55 @@ fn filter(model: Model) {
                   [],
                 ),
               ),
+            ]),
+            h.div([attr.class("basis-1/4")], [
+              case list.any(model.board_tags, fn(_) { True }) {
+                False -> h.text("No tags")
+                True ->
+                  element.fragment([
+                    h.div([], [h.text("Tags:")]),
+                    h.div(
+                      [attr.class("max-h-48 overflow-y-auto overflow-x-hidden")],
+                      list.map(model.board_tags, fn(t) {
+                        let checked = case filter.tags {
+                          [] -> True
+                          tags -> list.contains(tags, t)
+                        }
+
+                        h.label(
+                          [
+                            attr.class(
+                              "flex gap-2 content-center my-1 cursor-pointer",
+                            ),
+                          ],
+                          [
+                            h.div(
+                              [
+                                attr.class("checkbox-container"),
+                                attr.classes([#("is-enabled", checked)]),
+                              ],
+                              [
+                                h.input([
+                                  attr.type_("checkbox"),
+                                  attr.checked(checked),
+                                  event.on("click", fn(ev) {
+                                    Ok(UserClickedToggleFilterTag(ev, t))
+                                  }),
+                                ]),
+                              ],
+                            ),
+                            h.text(t),
+                          ],
+                        )
+                      }),
+                    ),
+                    h.div([attr.class("text-xs text-right")], [
+                      h.a([event.on_click(UserClickedSelectAllFilterTags)], [
+                        h.text("select all"),
+                      ]),
+                    ]),
+                  ])
+              },
             ]),
           ],
         ),

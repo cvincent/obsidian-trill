@@ -18,6 +18,7 @@ export function pages(query: string): List<Page> {
           status: p.status ? new Ok(p.status) : new Error("none"),
           original: p,
           content: new None(),
+          tags: List.fromArray(p.tags),
         };
       }),
   );

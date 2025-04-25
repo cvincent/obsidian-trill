@@ -8,6 +8,7 @@ pub type Page {
     status: Result(String, String),
     original: Dynamic,
     content: Option(String),
+    tags: List(String),
   )
 }
 
