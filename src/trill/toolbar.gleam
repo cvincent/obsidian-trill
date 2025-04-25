@@ -439,7 +439,7 @@ fn filter(model: Model) {
         h.div(
           [
             attr.class(
-              "flex justify-between items-start mb-4 bg-(--background-secondary) rounded-md p-2",
+              "flex justify-around items-start mb-4 bg-(--background-secondary) rounded-md p-2 py-4",
             ),
           ],
           [
@@ -485,7 +485,7 @@ fn filter(model: Model) {
                 ]),
               ]),
             ]),
-            h.div([attr.class("basis-1/3")], [
+            h.div([], [
               case list.any(model.board_tags, fn(_) { True }) {
                 False -> h.text("No tags")
                 True ->
