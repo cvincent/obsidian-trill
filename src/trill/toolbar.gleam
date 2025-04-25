@@ -133,6 +133,7 @@ pub type Msg {
   UserClickedClearFilterSearch
   UserClickedToggleFilterTag(ev: Dynamic, tag: String)
   UserClickedSelectAllFilterTags
+  UserClickedToggleFilterEnabled
 }
 
 type Update =
@@ -275,6 +276,20 @@ pub fn update(model: Model, msg: Msg) -> Update {
         BoardConfig(
           ..model.board_config,
           filter: CardFilter(..model.board_config.filter, tags: []),
+        ),
+      ),
+      effect.none(),
+    )
+
+    UserClickedToggleFilterEnabled -> #(
+      update_current_board_config(
+        model,
+        BoardConfig(
+          ..model.board_config,
+          filter: CardFilter(
+            ..model.board_config.filter,
+            enabled: !model.board_config.filter.enabled,
+          ),
         ),
       ),
       effect.none(),
@@ -428,26 +443,49 @@ fn filter(model: Model) {
             ),
           ],
           [
-            h.div([attr.class("search-input-container basis-1/4")], [
-              h.input([
-                attr.class("w-full"),
-                attr.type_("search"),
-                attr.placeholder("Search..."),
-                attr.value(option.unwrap(filter.search, "")),
-                event.on_input(UserUpdatedFilterSearch),
-              ]),
-              guard_element(
-                option.is_some(filter.search),
-                h.div(
-                  [
-                    attr.class("search-input-clear-button"),
-                    event.on_click(UserClickedClearFilterSearch),
-                  ],
-                  [],
-                ),
+            h.div([attr.class("basis-1/3")], [
+              h.label(
+                [attr.class("flex gap-2 content-center mb-4 cursor-pointer")],
+                [
+                  h.div(
+                    [
+                      attr.class("checkbox-container"),
+                      attr.classes([#("is-enabled", filter.enabled)]),
+                    ],
+                    [
+                      h.input([
+                        attr.type_("checkbox"),
+                        attr.checked(filter.enabled),
+                        event.on_click(UserClickedToggleFilterEnabled),
+                      ]),
+                    ],
+                  ),
+                  h.text("Enable filter"),
+                ],
               ),
+              h.div([attr.class("search-input-container")], [
+                h.div([], [
+                  h.input([
+                    attr.class("w-full"),
+                    attr.type_("search"),
+                    attr.placeholder("Search..."),
+                    attr.value(option.unwrap(filter.search, "")),
+                    event.on_input(UserUpdatedFilterSearch),
+                  ]),
+                  guard_element(
+                    option.is_some(filter.search),
+                    h.div(
+                      [
+                        attr.class("search-input-clear-button"),
+                        event.on_click(UserClickedClearFilterSearch),
+                      ],
+                      [],
+                    ),
+                  ),
+                ]),
+              ]),
             ]),
-            h.div([attr.class("basis-1/4")], [
+            h.div([attr.class("basis-1/3")], [
               case list.any(model.board_tags, fn(_) { True }) {
                 False -> h.text("No tags")
                 True ->

@@ -170,6 +170,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       |> toolbar_update(toolbar_msg)
       |> update_board_view_board_config()
 
+    ToolbarMsg(toolbar.UserClickedToggleFilterEnabled as toolbar_msg) ->
+      #(model, debounce_filter_save())
+      |> toolbar_update(toolbar_msg)
+      |> update_board_view_board_config()
+
     ToolbarMsg(toolbar_msg) ->
       #(model, effect.none())
       |> toolbar_update(toolbar_msg)
