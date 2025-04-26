@@ -192,12 +192,9 @@ pub fn update(model: Model, msg: Msg) -> Update {
       let effect = effect.map(effect, FilterEditorMsg)
 
       #(
-        Model(
-          ..model,
-          board_config: BoardConfig(
-            ..model.board_config,
-            filter: filter_editor.filter,
-          ),
+        set_current_board_config(
+          model,
+          BoardConfig(..model.board_config, filter: filter_editor.filter),
         ),
         effect,
       )
