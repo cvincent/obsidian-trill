@@ -1,16 +1,14 @@
 import board_config.{type BoardConfig, BoardConfig}
 import board_config_form
-import card_filter.{type CardFilter, CardFilter}
+import card_filter
 import components
 import confirm_modal
 import context_menu
 import ffi/dataview
 import ffi/obsidian/modal.{type Modal}
 import gleam/dynamic.{type Dynamic}
-import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import gleam/string
 import icons
 import lustre/attribute as attr
@@ -19,6 +17,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
 import obsidian_context.{type ObsidianContext}
+import trill/filter_editor
 import util.{guard_element}
 
 pub const user_submitted_new_board_form = "user-submitted-new-board-form"
@@ -114,11 +113,7 @@ pub type Msg {
   ToolbarDisplayedModal(Modal)
 
   UserClickedToggleFilter(ev: Dynamic)
-  UserUpdatedFilterSearch(search: String)
-  UserClickedClearFilterSearch
-  UserClickedToggleFilterTag(ev: Dynamic, tag: String)
-  UserClickedSelectAllFilterTags
-  UserClickedToggleFilterEnabled
+  FilterEditorMsg(filter_editor.Msg)
 }
 
 type Update =
@@ -185,65 +180,28 @@ pub fn update(model: Model, msg: Msg) -> Update {
       effect.none(),
     )
 
-    UserUpdatedFilterSearch(search) -> {
-      let search = case search {
-        "" -> None
-        search -> Some(search)
-      }
+    FilterEditorMsg(filter_editor_msg) -> {
+      let #(filter_editor, effect) =
+        filter_editor.update(
+          filter_editor.Model(
+            board_tags: model.board_tags,
+            filter: model.board_config.filter,
+          ),
+          filter_editor_msg,
+        )
+      let effect = effect.map(effect, FilterEditorMsg)
 
-      #(model, effect.none())
-      |> update_filter(CardFilter(..model.board_config.filter, search:))
-    }
-
-    UserClickedClearFilterSearch ->
-      #(model, effect.none())
-      |> update_filter(CardFilter(..model.board_config.filter, search: None))
-
-    UserClickedToggleFilterTag(ev, tag) -> {
-      let ctrl =
-        ev
-        |> decode.run(decode.at(["ctrlKey"], decode.bool))
-        |> result.unwrap(False)
-
-      // Since an empty list means all tags, first determine what toggling this
-      // one should do
-      let tags = case model.board_config.filter.tags {
-        [] -> list.filter(model.board_tags, fn(t) { t != tag })
-        tags ->
-          case list.contains(tags, tag) {
-            True -> list.filter(tags, fn(t) { t != tag })
-            False -> list.append(tags, [tag])
-          }
-      }
-
-      // Ctrl overrides to select _only_ this tag
-      let tags = case ctrl {
-        True -> [tag]
-        False -> tags
-      }
-
-      // Check if all tags are selected, in which case it's an empty list
-      let tags = case list.all(model.board_tags, list.contains(tags, _)) {
-        True -> []
-        _ -> tags
-      }
-
-      #(model, effect.none())
-      |> update_filter(CardFilter(..model.board_config.filter, tags:))
-    }
-
-    UserClickedSelectAllFilterTags ->
-      #(model, effect.none())
-      |> update_filter(CardFilter(..model.board_config.filter, tags: []))
-
-    UserClickedToggleFilterEnabled ->
-      #(model, effect.none())
-      |> update_filter(
-        CardFilter(
-          ..model.board_config.filter,
-          enabled: !model.board_config.filter.enabled,
+      #(
+        Model(
+          ..model,
+          board_config: BoardConfig(
+            ..model.board_config,
+            filter: filter_editor.filter,
+          ),
         ),
+        effect,
       )
+    }
   }
 }
 
@@ -312,16 +270,6 @@ fn show_confirm_delete_modal(update: Update) -> Update {
   #(model, effect.batch([effect, effects]))
 }
 
-fn update_filter(update: Update, filter: CardFilter) -> Update {
-  #(
-    Model(
-      ..update.0,
-      board_config: BoardConfig(..{ update.0 }.board_config, filter:),
-    ),
-    update.1,
-  )
-}
-
 fn display_modal(modal: Modal) -> Effect(Msg) {
   effect.from(fn(dispatch) {
     modal.open(modal)
@@ -335,7 +283,14 @@ pub fn view(model: Model) -> Element(Msg) {
       toolbar_left(model),
       toolbar_right(model),
     ]),
-    filter(model),
+    guard_element(
+      model.show_filter,
+      filter_editor.view(filter_editor.Model(
+        board_tags: model.board_tags,
+        filter: model.board_config.filter,
+      )),
+    )
+      |> element.map(FilterEditorMsg),
   ])
 }
 
@@ -379,6 +334,7 @@ fn toolbar_right(model: Model) -> Element(Msg) {
   }
 
   h.div([attr.class("flex justify-end gap-2")], [
+    // TODO: Extract a function for these buttons
     h.div(
       [
         attr.class(filter_icon_class),
@@ -387,115 +343,4 @@ fn toolbar_right(model: Model) -> Element(Msg) {
       [icons.icon("funnel")],
     ),
   ])
-}
-
-fn filter(model: Model) -> Element(Msg) {
-  let filter = model.board_config.filter
-
-  case model.show_filter {
-    False -> element.none()
-    True ->
-      h.div([], [
-        h.div(
-          [
-            attr.class(
-              "flex justify-around items-start mb-4 bg-(--background-secondary) rounded-md p-2 py-4",
-            ),
-          ],
-          [
-            h.div([attr.class("basis-1/3")], [
-              h.label(
-                [attr.class("flex gap-2 content-center mb-4 cursor-pointer")],
-                [
-                  h.div(
-                    [
-                      attr.class("checkbox-container"),
-                      attr.classes([#("is-enabled", filter.enabled)]),
-                    ],
-                    [
-                      h.input([
-                        attr.type_("checkbox"),
-                        attr.checked(filter.enabled),
-                        event.on_click(UserClickedToggleFilterEnabled),
-                      ]),
-                    ],
-                  ),
-                  h.text("Enable filter"),
-                ],
-              ),
-              h.div([attr.class("search-input-container")], [
-                h.div([], [
-                  h.input([
-                    attr.class("w-full"),
-                    attr.type_("search"),
-                    attr.placeholder("Search..."),
-                    attr.value(option.unwrap(filter.search, "")),
-                    event.on_input(UserUpdatedFilterSearch),
-                  ]),
-                  guard_element(
-                    option.is_some(filter.search),
-                    h.div(
-                      [
-                        attr.class("search-input-clear-button"),
-                        event.on_click(UserClickedClearFilterSearch),
-                      ],
-                      [],
-                    ),
-                  ),
-                ]),
-              ]),
-            ]),
-            h.div([], [
-              case list.any(model.board_tags, fn(_) { True }) {
-                False -> h.text("No tags")
-                True ->
-                  element.fragment([
-                    h.div([], [h.text("Tags:")]),
-                    h.div(
-                      [attr.class("max-h-48 overflow-y-auto overflow-x-hidden")],
-                      list.map(model.board_tags, fn(t) {
-                        let checked = case filter.tags {
-                          [] -> True
-                          tags -> list.contains(tags, t)
-                        }
-
-                        h.label(
-                          [
-                            attr.class(
-                              "flex gap-2 content-center my-1 cursor-pointer",
-                            ),
-                          ],
-                          [
-                            h.div(
-                              [
-                                attr.class("checkbox-container"),
-                                attr.classes([#("is-enabled", checked)]),
-                              ],
-                              [
-                                h.input([
-                                  attr.type_("checkbox"),
-                                  attr.checked(checked),
-                                  event.on("click", fn(ev) {
-                                    Ok(UserClickedToggleFilterTag(ev, t))
-                                  }),
-                                ]),
-                              ],
-                            ),
-                            h.text(t),
-                          ],
-                        )
-                      }),
-                    ),
-                    h.div([attr.class("text-xs text-right")], [
-                      h.a([event.on_click(UserClickedSelectAllFilterTags)], [
-                        h.text("select all"),
-                      ]),
-                    ]),
-                  ])
-              },
-            ]),
-          ],
-        ),
-      ])
-  }
 }
