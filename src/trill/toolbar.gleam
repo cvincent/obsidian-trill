@@ -306,40 +306,39 @@ fn toolbar_left(model: Model) -> Element(Msg) {
         )
       }),
     ),
-    toolbar_button(
-      "ellipsis-vertical",
-      "clickable-icon [--icon-size:var(--icon-s)] [--icon-stroke:var(--icon-s-stroke-width)]",
-      UserClickedBoardMenu,
-    ),
+    toolbar_button("ellipsis-vertical", False, False, UserClickedBoardMenu),
   ])
 }
 
 fn toolbar_right(model: Model) -> Element(Msg) {
-  let filter_icon_class =
-    "clickable-icon [--icon-size:var(--icon-xs)] [--icon-stroke:var(--icon-xs-stroke-width)] justify-self-end"
-
-  let filter_icon_class = case
-    card_filter.any(model.board_config.filter),
-    model.drawer
-  {
-    True, _ -> filter_icon_class <> " [--icon-color:var(--color-orange)]"
-    _, FilterEditor ->
-      filter_icon_class <> " [--icon-color:var(--icon-color-active)]"
-    _, _ -> filter_icon_class
-  }
-
   h.div([attr.class("flex justify-end gap-2")], [
-    toolbar_button("funnel", filter_icon_class, UserClickedToggleFilter),
+    toolbar_button(
+      "funnel",
+      model.drawer == FilterEditor,
+      card_filter.any(model.board_config.filter),
+      UserClickedToggleFilter,
+    ),
   ])
 }
 
 fn toolbar_button(
   icon: String,
-  class: String,
+  drawer_open: Bool,
+  active: Bool,
   msg_constructor: fn(Dynamic) -> a,
 ) -> Element(a) {
+  let class =
+    "clickable-icon [--icon-size:var(--icon-xs)] [--icon-stroke:var(--icon-xs-stroke-width)]"
+
   h.div(
-    [attr.class(class), event.on("click", fn(ev) { Ok(msg_constructor(ev)) })],
+    [
+      attr.classes([
+        #(class, True),
+        #("[--icon-color:var(--color-orange)]", active),
+        #(" [--icon-color:var(--icon-color-active)]", drawer_open),
+      ]),
+      event.on("click", fn(ev) { Ok(msg_constructor(ev)) }),
+    ],
     [icons.icon(icon)],
   )
 }

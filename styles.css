@@ -299,9 +299,6 @@
   .justify-self-center {
     justify-self: center;
   }
-  .justify-self-end {
-    justify-self: flex-end;
-  }
   .overflow-hidden {
     overflow: hidden;
   }
@@ -386,9 +383,6 @@
   }
   .\[--icon-size\:var\(--icon-xs\)\] {
     --icon-size: var(--icon-xs);
-  }
-  .\[--icon-stroke\:var\(--icon-s-stroke-width\)\] {
-    --icon-stroke: var(--icon-s-stroke-width);
   }
   .\[--icon-stroke\:var\(--icon-xs-stroke-width\)\] {
     --icon-stroke: var(--icon-xs-stroke-width);
