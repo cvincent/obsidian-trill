@@ -17,7 +17,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
 import obsidian_context.{type ObsidianContext}
-import trill/filter_editor
+import trill/filter_drawer
 
 pub const user_submitted_new_board_form = "user-submitted-new-board-form"
 
@@ -39,8 +39,8 @@ pub type Model {
 
 pub type Drawer {
   NoDrawer
-  ColumnsEditor
-  FilterEditor
+  ColumnsDrawer
+  FilterDrawer
 }
 
 pub fn maybe_toolbar(
@@ -118,7 +118,7 @@ pub type Msg {
   ToolbarDisplayedModal(Modal)
 
   UserClickedToggleFilter(ev: Dynamic)
-  FilterEditorMsg(filter_editor.Msg)
+  FilterDrawerMsg(filter_drawer.Msg)
 }
 
 type Update =
@@ -182,27 +182,27 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     UserClickedToggleFilter(_) -> #(
       Model(..model, drawer: case model.drawer {
-        FilterEditor -> NoDrawer
-        _ -> FilterEditor
+        FilterDrawer -> NoDrawer
+        _ -> FilterDrawer
       }),
       effect.none(),
     )
 
-    FilterEditorMsg(filter_editor_msg) -> {
-      let #(filter_editor, effect) =
-        filter_editor.update(
-          filter_editor.Model(
+    FilterDrawerMsg(filter_drawer_msg) -> {
+      let #(filter_drawer, effect) =
+        filter_drawer.update(
+          filter_drawer.Model(
             board_tags: model.board_tags,
             filter: model.board_config.filter,
           ),
-          filter_editor_msg,
+          filter_drawer_msg,
         )
-      let effect = effect.map(effect, FilterEditorMsg)
+      let effect = effect.map(effect, FilterDrawerMsg)
 
       #(
         set_current_board_config(
           model,
-          BoardConfig(..model.board_config, filter: filter_editor.filter),
+          BoardConfig(..model.board_config, filter: filter_drawer.filter),
         ),
         effect,
       )
@@ -314,7 +314,7 @@ fn toolbar_right(model: Model) -> Element(Msg) {
   h.div([attr.class("flex justify-end gap-2")], [
     toolbar_button(
       "funnel",
-      model.drawer == FilterEditor,
+      model.drawer == FilterDrawer,
       card_filter.any(model.board_config.filter),
       UserClickedToggleFilter,
     ),
@@ -347,13 +347,13 @@ fn drawer(model: Model) -> Element(Msg) {
   case model.drawer {
     NoDrawer -> element.none()
 
-    FilterEditor ->
-      filter_editor.view(filter_editor.Model(
+    FilterDrawer ->
+      filter_drawer.view(filter_drawer.Model(
         board_tags: model.board_tags,
         filter: model.board_config.filter,
       ))
-      |> element.map(FilterEditorMsg)
+      |> element.map(FilterDrawerMsg)
 
-    ColumnsEditor -> element.none()
+    ColumnsDrawer -> element.none()
   }
 }
