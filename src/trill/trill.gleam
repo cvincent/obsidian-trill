@@ -181,7 +181,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     BoardViewMsg(board_view_msg) ->
       #(model, effect.none())
-      |> board_view_update(board_view_msg)
+      |> handle_board_view_msg(board_view_msg)
 
     UserSubmittedNewBoardConfigForm(ev) -> {
       use new_board_config <- util.result_guard(
@@ -290,7 +290,7 @@ fn debounce_filter_save() {
   })
 }
 
-fn board_view_update(update: Update, board_view_msg: board_view.Msg) {
+fn handle_board_view_msg(update: Update, board_view_msg: board_view.Msg) {
   let #(model, effects) = update
 
   let board_view_update =
