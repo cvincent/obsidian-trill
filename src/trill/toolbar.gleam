@@ -9,13 +9,13 @@ import ffi/obsidian/modal.{type Modal}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import icons
 import lustre/attribute as attr
 import lustre/effect.{type Effect}
-import lustre/element
+import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
 import obsidian_context.{type ObsidianContext}
@@ -39,7 +39,10 @@ pub type Model {
   )
 }
 
-pub fn maybe_toolbar(obs: ObsidianContext, board_configs: List(BoardConfig)) {
+pub fn maybe_toolbar(
+  obs: ObsidianContext,
+  board_configs: List(BoardConfig),
+) -> Option(Model) {
   case list.first(board_configs) {
     Ok(board_config) ->
       Some(Model(
@@ -53,14 +56,14 @@ pub fn maybe_toolbar(obs: ObsidianContext, board_configs: List(BoardConfig)) {
   }
 }
 
-pub fn add_board_config(toolbar: Model, board_config: BoardConfig) {
+pub fn add_board_config(toolbar: Model, board_config: BoardConfig) -> Model {
   let board_configs =
     [board_config, ..toolbar.board_configs]
     |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
   Model(..toolbar, board_configs:)
 }
 
-pub fn select_board_config(toolbar: Model, board_config: BoardConfig) {
+pub fn select_board_config(toolbar: Model, board_config: BoardConfig) -> Model {
   Model(
     ..toolbar,
     board_config:,
@@ -71,7 +74,7 @@ pub fn select_board_config(toolbar: Model, board_config: BoardConfig) {
 pub fn update_current_board_config(
   toolbar: Model,
   updated_board_config: BoardConfig,
-) {
+) -> Model {
   let board_configs =
     toolbar.board_configs
     |> list.map(fn(bc) {
@@ -91,7 +94,8 @@ pub fn update_current_board_config(
   )
 }
 
-pub fn delete_current_board_config(toolbar: Model) {
+// TODO: Why does only this one return an Option
+pub fn delete_current_board_config(toolbar: Model) -> Option(Model) {
   let board_configs =
     list.filter(toolbar.board_configs, fn(bc) { bc != toolbar.board_config })
 
@@ -109,7 +113,7 @@ pub fn delete_current_board_config(toolbar: Model) {
   }
 }
 
-fn tags_for_query(query: String) {
+fn tags_for_query(query: String) -> List(String) {
   dataview.pages(query)
   |> list.flat_map(fn(p) { p.tags })
   |> list.unique()
@@ -338,7 +342,7 @@ fn show_board_config_form_modal(
   #(model, effect.batch([effect, effects]))
 }
 
-fn show_confirm_delete_modal(update: Update) {
+fn show_confirm_delete_modal(update: Update) -> Update {
   let #(model, effects) = update
 
   let effect =
@@ -358,14 +362,14 @@ fn show_confirm_delete_modal(update: Update) {
   #(model, effect.batch([effect, effects]))
 }
 
-fn display_modal(modal: Modal) {
+fn display_modal(modal: Modal) -> Effect(Msg) {
   effect.from(fn(dispatch) {
     modal.open(modal)
     dispatch(ToolbarDisplayedModal(modal))
   })
 }
 
-pub fn view(model: Model) {
+pub fn view(model: Model) -> Element(Msg) {
   h.div([], [
     h.div([attr.class("flex justify-between mb-4 gap-2")], [
       toolbar_left(model),
@@ -375,7 +379,7 @@ pub fn view(model: Model) {
   ])
 }
 
-fn toolbar_left(model: Model) {
+fn toolbar_left(model: Model) -> Element(Msg) {
   h.div([attr.class("flex justify-start gap-2")], [
     h.select(
       [attr.class("dropdown"), event.on_input(UserSelectedBoardConfig)],
@@ -401,7 +405,7 @@ fn toolbar_left(model: Model) {
   ])
 }
 
-fn toolbar_right(model: Model) {
+fn toolbar_right(model: Model) -> Element(Msg) {
   let filter_icon_class =
     "clickable-icon [--icon-size:var(--icon-xs)] [--icon-stroke:var(--icon-xs-stroke-width)] justify-self-end"
 
@@ -425,7 +429,7 @@ fn toolbar_right(model: Model) {
   ])
 }
 
-fn filter(model: Model) {
+fn filter(model: Model) -> Element(Msg) {
   let filter = model.board_config.filter
 
   case model.show_filter {
