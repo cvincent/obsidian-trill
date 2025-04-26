@@ -79,7 +79,7 @@ pub type Msg {
 type Update =
   #(Model, Effect(Msg))
 
-pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
+pub fn init(obs: ObsidianContext) -> Update {
   let board_configs =
     obs.saved_data
     |> option.unwrap("{\"board_configs\": []}")
@@ -144,7 +144,7 @@ pub fn init(obs: ObsidianContext) -> #(Model, Effect(Msg)) {
   )
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model: Model, msg: Msg) -> Update {
   case msg {
     ToolbarMsg(toolbar.UserSelectedBoardConfig(_board_config) as toolbar_msg) ->
       #(model, effect.none())
@@ -255,10 +255,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn handle_toolbar_msg(
-  update: Update,
-  toolbar_msg: toolbar.Msg,
-) -> #(Model, Effect(Msg)) {
+fn handle_toolbar_msg(update: Update, toolbar_msg: toolbar.Msg) -> Update {
   let #(model, effects) = update
 
   let toolbar_update = option.map(model.toolbar, toolbar.update(_, toolbar_msg))
@@ -274,11 +271,7 @@ fn handle_toolbar_msg(
   #(Model(..model, toolbar:), effect.batch([effect, effects]))
 }
 
-fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) {
-  #(Model(..update.0, toolbar:), update.1)
-}
-
-fn debounce_filter_save() {
+fn debounce_filter_save() -> Effect(Msg) {
   effect.from(fn(dispatch) {
     let _ =
       global.get_timer_id(save_filter_debounce)
@@ -290,7 +283,10 @@ fn debounce_filter_save() {
   })
 }
 
-fn handle_board_view_msg(update: Update, board_view_msg: board_view.Msg) {
+fn handle_board_view_msg(
+  update: Update,
+  board_view_msg: board_view.Msg,
+) -> Update {
   let #(model, effects) = update
 
   let board_view_update =
@@ -307,7 +303,11 @@ fn handle_board_view_msg(update: Update, board_view_msg: board_view.Msg) {
   #(Model(..model, board_view:), effect.batch([effect, effects]))
 }
 
-pub fn update_board_view_board_config(update: Update) {
+fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) -> Update {
+  #(Model(..update.0, toolbar:), update.1)
+}
+
+pub fn update_board_view_board_config(update: Update) -> Update {
   let #(model, effects) = update
 
   {
