@@ -96,106 +96,101 @@ pub fn update(model: Model, msg: Msg) -> Update {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  h.div([], [
-    h.div(
-      [
-        attr.class(
-          "flex justify-around items-start mb-4 bg-(--background-secondary) rounded-md p-2 py-4",
-        ),
-      ],
-      [
-        h.div([attr.class("basis-1/3")], [
-          h.label(
-            [attr.class("flex gap-2 content-center mb-4 cursor-pointer")],
+  h.div(
+    [
+      attr.class(
+        "flex justify-around items-start mb-4 bg-(--background-secondary) rounded-md p-2 py-4",
+      ),
+    ],
+    [
+      h.div([attr.class("basis-1/3")], [
+        h.label([attr.class("flex gap-2 content-center mb-4 cursor-pointer")], [
+          h.div(
             [
-              h.div(
-                [
-                  attr.class("checkbox-container"),
-                  attr.classes([#("is-enabled", model.filter.enabled)]),
-                ],
-                [
-                  h.input([
-                    attr.type_("checkbox"),
-                    attr.checked(model.filter.enabled),
-                    event.on_click(UserClickedToggleFilterEnabled),
-                  ]),
-                ],
-              ),
-              h.text("Enable filter"),
+              attr.class("checkbox-container"),
+              attr.classes([#("is-enabled", model.filter.enabled)]),
+            ],
+            [
+              h.input([
+                attr.type_("checkbox"),
+                attr.checked(model.filter.enabled),
+                event.on_click(UserClickedToggleFilterEnabled),
+              ]),
             ],
           ),
-          h.div([attr.class("search-input-container")], [
-            h.div([], [
-              h.input([
-                attr.class("w-full"),
-                attr.type_("search"),
-                attr.placeholder("Search..."),
-                attr.value(option.unwrap(model.filter.search, "")),
-                event.on_input(UserUpdatedFilterSearch),
-              ]),
-              guard_element(
-                option.is_some(model.filter.search),
-                h.div(
-                  [
-                    attr.class("search-input-clear-button"),
-                    event.on_click(UserClickedClearFilterSearch),
-                  ],
-                  [],
-                ),
-              ),
+          h.text("Enable filter"),
+        ]),
+        h.div([attr.class("search-input-container")], [
+          h.div([], [
+            h.input([
+              attr.class("w-full"),
+              attr.type_("search"),
+              attr.placeholder("Search..."),
+              attr.value(option.unwrap(model.filter.search, "")),
+              event.on_input(UserUpdatedFilterSearch),
             ]),
+            guard_element(
+              option.is_some(model.filter.search),
+              h.div(
+                [
+                  attr.class("search-input-clear-button"),
+                  event.on_click(UserClickedClearFilterSearch),
+                ],
+                [],
+              ),
+            ),
           ]),
         ]),
-        h.div([], [
-          case list.any(model.board_tags, fn(_) { True }) {
-            False -> h.text("No tags")
-            True ->
-              element.fragment([
-                h.div([], [h.text("Tags:")]),
-                h.div(
-                  [attr.class("max-h-48 overflow-y-auto overflow-x-hidden")],
-                  list.map(model.board_tags, fn(t) {
-                    let checked = case model.filter.tags {
-                      [] -> True
-                      tags -> list.contains(tags, t)
-                    }
+      ]),
+      h.div([], [
+        case list.any(model.board_tags, fn(_) { True }) {
+          False -> h.text("No tags")
+          True ->
+            element.fragment([
+              h.div([], [h.text("Tags:")]),
+              h.div(
+                [attr.class("max-h-48 overflow-y-auto overflow-x-hidden")],
+                list.map(model.board_tags, fn(t) {
+                  let checked = case model.filter.tags {
+                    [] -> True
+                    tags -> list.contains(tags, t)
+                  }
 
-                    h.label(
-                      [
-                        attr.class(
-                          "flex gap-2 content-center my-1 cursor-pointer",
-                        ),
-                      ],
-                      [
-                        h.div(
-                          [
-                            attr.class("checkbox-container"),
-                            attr.classes([#("is-enabled", checked)]),
-                          ],
-                          [
-                            h.input([
-                              attr.type_("checkbox"),
-                              attr.checked(checked),
-                              event.on("click", fn(ev) {
-                                Ok(UserClickedToggleFilterTag(ev, t))
-                              }),
-                            ]),
-                          ],
-                        ),
-                        h.text(t),
-                      ],
-                    )
-                  }),
-                ),
-                h.div([attr.class("text-xs text-right")], [
-                  h.a([event.on_click(UserClickedSelectAllFilterTags)], [
-                    h.text("select all"),
-                  ]),
+                  h.label(
+                    [
+                      attr.class(
+                        "flex gap-2 content-center my-1 cursor-pointer",
+                      ),
+                    ],
+                    [
+                      h.div(
+                        [
+                          attr.class("checkbox-container"),
+                          attr.classes([#("is-enabled", checked)]),
+                        ],
+                        [
+                          h.input([
+                            attr.type_("checkbox"),
+                            attr.checked(checked),
+                            event.on("click", fn(ev) {
+                              Ok(UserClickedToggleFilterTag(ev, t))
+                            }),
+                          ]),
+                        ],
+                      ),
+                      h.text(t),
+                    ],
+                  )
+                }),
+              ),
+              h.div([attr.class("text-xs text-right")], [
+                h.a([event.on_click(UserClickedSelectAllFilterTags)], [
+                  h.text("select all"),
                 ]),
-              ])
-          },
-        ]),
-      ],
-    ),
-  ])
+              ]),
+            ])
+        },
+      ]),
+    ],
+  )
 }
