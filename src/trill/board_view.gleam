@@ -66,7 +66,7 @@ fn new_board_from_config(
 ) -> #(Board(String, Page), Effect(Msg)) {
   #(
     board.new_board(
-      group_keys: board_config.statuses,
+      group_keys: list.map(board_config.columns, fn(c) { c.status }),
       cards: [],
       group_key_fn: group_key_fn,
       update_group_key_fn: update_group_key_fn,
@@ -91,7 +91,7 @@ fn update_board_from_config(
   #(
     Board(
       ..board,
-      group_keys: board_config.statuses,
+      group_keys: list.map(board_config.columns, fn(c) { c.status }),
       group_key_fn: group_key_fn,
       update_group_key_fn: update_group_key_fn,
       null_status: board_config.null_status,
