@@ -146,34 +146,9 @@ pub fn init(obs: ObsidianContext) -> Update {
 
 pub fn update(model: Model, msg: Msg) -> Update {
   case msg {
-    ToolbarMsg(toolbar.UserSelectedBoardConfig(_board_config) as toolbar_msg) ->
-      #(model, effect.none())
-      |> handle_toolbar_msg(toolbar_msg)
-      |> update_board_view_board_config()
-
     ToolbarMsg(toolbar.ToolbarDisplayedModal(modal) as toolbar_msg) ->
       #(Model(..model, modal: Some(modal)), effect.none())
       |> handle_toolbar_msg(toolbar_msg)
-
-    ToolbarMsg(toolbar.UserUpdatedFilterSearch(_) as toolbar_msg) ->
-      #(model, debounce_filter_save())
-      |> handle_toolbar_msg(toolbar_msg)
-      |> update_board_view_board_config()
-
-    ToolbarMsg(toolbar.UserClickedClearFilterSearch as toolbar_msg) ->
-      #(model, debounce_filter_save())
-      |> handle_toolbar_msg(toolbar_msg)
-      |> update_board_view_board_config()
-
-    ToolbarMsg(toolbar.UserClickedToggleFilterTag(_, _) as toolbar_msg) ->
-      #(model, debounce_filter_save())
-      |> handle_toolbar_msg(toolbar_msg)
-      |> update_board_view_board_config()
-
-    ToolbarMsg(toolbar.UserClickedToggleFilterEnabled as toolbar_msg) ->
-      #(model, debounce_filter_save())
-      |> handle_toolbar_msg(toolbar_msg)
-      |> update_board_view_board_config()
 
     ToolbarMsg(toolbar_msg) ->
       #(model, effect.none())
@@ -201,7 +176,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> update_board_view_board_config()
+      |> sync_board_view_board_config_from_toolbar()
       |> save_board_configs()
       |> close_modal()
     }
@@ -223,7 +198,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> update_board_view_board_config()
+      |> sync_board_view_board_config_from_toolbar()
       |> save_board_configs()
       |> close_modal()
     }
@@ -234,7 +209,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> update_board_view_board_config()
+      |> sync_board_view_board_config_from_toolbar()
       |> save_board_configs()
       |> close_modal()
     }
@@ -247,7 +222,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     ObsidianReportedFileChange ->
       #(model, effect.none())
-      |> update_board_view_board_config()
+      |> sync_board_view_board_config_from_toolbar()
 
     FilterSaveDebounced ->
       #(model, effect.none())
@@ -260,13 +235,21 @@ fn handle_toolbar_msg(update: Update, toolbar_msg: toolbar.Msg) -> Update {
 
   {
     use toolbar <- option.map(model.toolbar)
+    use board_view <- option.map(model.board_view)
 
     let #(toolbar, effect) = toolbar.update(toolbar, toolbar_msg)
+    let toolbar_board_config = toolbar.board_config
     let toolbar = Some(toolbar)
     let effect = effect.map(effect, ToolbarMsg)
 
-    #(Model(..model, toolbar: toolbar), effect.batch([effect, effects]))
+    #(model, effect.batch([effect, effects]))
+    |> update_toolbar(toolbar)
+    |> util.pipe_if(toolbar_board_config != board_view.board_config, fn(update) {
+      #(update.0, effect.batch([debounce_filter_save(), update.1]))
+      |> sync_board_view_board_config_from_toolbar()
+    })
   }
+  |> option.flatten()
   |> option.unwrap(update)
 }
 
@@ -304,7 +287,7 @@ fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) -> Update {
   #(Model(..update.0, toolbar:), update.1)
 }
 
-pub fn update_board_view_board_config(update: Update) -> Update {
+pub fn sync_board_view_board_config_from_toolbar(update: Update) -> Update {
   let #(model, effects) = update
 
   {

@@ -39,3 +39,10 @@ pub fn guard_element(cond: Bool, element) {
     False -> element.none()
   }
 }
+
+pub fn pipe_if(input: piped, cond: Bool, func: fn(piped) -> piped) {
+  case cond {
+    True -> func(input)
+    False -> input
+  }
+}
