@@ -205,8 +205,8 @@ pub fn update(model: Model, msg: Msg) -> Update {
         |> decode.run(decode.at(["ctrlKey"], decode.bool))
         |> result.unwrap(False)
 
-      // TODO: I don't love these three sequential case statements, can we do
-      // better?
+      // Since an empty list means all tags, first determine what toggling this
+      // one should do
       let tags = case model.board_config.filter.tags {
         [] -> list.filter(model.board_tags, fn(t) { t != tag })
         tags ->
@@ -216,11 +216,13 @@ pub fn update(model: Model, msg: Msg) -> Update {
           }
       }
 
+      // Ctrl overrides to select _only_ this tag
       let tags = case ctrl {
         True -> [tag]
         False -> tags
       }
 
+      // Check if all tags are selected, in which case it's an empty list
       let tags = case list.all(model.board_tags, list.contains(tags, _)) {
         True -> []
         _ -> tags
