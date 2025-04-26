@@ -84,7 +84,6 @@ pub fn set_current_board_config(
   )
 }
 
-// TODO: Why does only this one return an Option
 pub fn delete_current_board_config(toolbar: Model) -> Option(Model) {
   let board_configs =
     list.filter(toolbar.board_configs, fn(bc) { bc != toolbar.board_config })
