@@ -192,28 +192,13 @@ pub fn update(model: Model, msg: Msg) -> Update {
         search -> Some(search)
       }
 
-      #(
-        set_current_board_config(
-          model,
-          BoardConfig(
-            ..model.board_config,
-            filter: CardFilter(..model.board_config.filter, search:),
-          ),
-        ),
-        effect.none(),
-      )
+      #(model, effect.none())
+      |> update_filter(CardFilter(..model.board_config.filter, search:))
     }
 
-    UserClickedClearFilterSearch -> #(
-      set_current_board_config(
-        model,
-        BoardConfig(
-          ..model.board_config,
-          filter: CardFilter(..model.board_config.filter, search: None),
-        ),
-      ),
-      effect.none(),
-    )
+    UserClickedClearFilterSearch ->
+      #(model, effect.none())
+      |> update_filter(CardFilter(..model.board_config.filter, search: None))
 
     UserClickedToggleFilterTag(ev, tag) -> {
       let ctrl =
@@ -221,6 +206,8 @@ pub fn update(model: Model, msg: Msg) -> Update {
         |> decode.run(decode.at(["ctrlKey"], decode.bool))
         |> result.unwrap(False)
 
+      // TODO: I don't love these three sequential case statements, can we do
+      // better?
       let tags = case model.board_config.filter.tags {
         [] -> list.filter(model.board_tags, fn(t) { t != tag })
         tags ->
@@ -240,42 +227,22 @@ pub fn update(model: Model, msg: Msg) -> Update {
         _ -> tags
       }
 
-      #(
-        set_current_board_config(
-          model,
-          BoardConfig(
-            ..model.board_config,
-            filter: CardFilter(..model.board_config.filter, tags:),
-          ),
-        ),
-        effect.none(),
-      )
+      #(model, effect.none())
+      |> update_filter(CardFilter(..model.board_config.filter, tags:))
     }
 
-    UserClickedSelectAllFilterTags -> #(
-      set_current_board_config(
-        model,
-        BoardConfig(
-          ..model.board_config,
-          filter: CardFilter(..model.board_config.filter, tags: []),
-        ),
-      ),
-      effect.none(),
-    )
+    UserClickedSelectAllFilterTags ->
+      #(model, effect.none())
+      |> update_filter(CardFilter(..model.board_config.filter, tags: []))
 
-    UserClickedToggleFilterEnabled -> #(
-      set_current_board_config(
-        model,
-        BoardConfig(
-          ..model.board_config,
-          filter: CardFilter(
-            ..model.board_config.filter,
-            enabled: !model.board_config.filter.enabled,
-          ),
+    UserClickedToggleFilterEnabled ->
+      #(model, effect.none())
+      |> update_filter(
+        CardFilter(
+          ..model.board_config.filter,
+          enabled: !model.board_config.filter.enabled,
         ),
-      ),
-      effect.none(),
-    )
+      )
   }
 }
 
@@ -342,6 +309,16 @@ fn show_confirm_delete_modal(update: Update) -> Update {
     |> display_modal()
 
   #(model, effect.batch([effect, effects]))
+}
+
+fn update_filter(update: Update, filter: CardFilter) -> Update {
+  #(
+    Model(
+      ..update.0,
+      board_config: BoardConfig(..{ update.0 }.board_config, filter:),
+    ),
+    update.1,
+  )
 }
 
 fn display_modal(modal: Modal) -> Effect(Msg) {
