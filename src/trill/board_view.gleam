@@ -1,4 +1,4 @@
-import board.{type Board, type Card, Card, TargetPlaceholder}
+import board.{type Board, type Card, Board, Card, TargetPlaceholder}
 import board_config.{type BoardConfig, BoardConfig}
 import card_filter
 import ffi/dataview.{type Page, Page}
@@ -46,12 +46,24 @@ pub fn new(obs: ObsidianContext, board_config: BoardConfig) {
   #(Model(obs:, board_config:, board:, card_contents: dict.new()), effect)
 }
 
-pub fn update_board_config(board_view: Model, board_config: BoardConfig) {
-  let #(board, effect) = new_board_from_config(board_config)
+pub fn update_board_config(
+  board_view: Model,
+  board_config: BoardConfig,
+  force_refresh: Bool,
+) {
+  let #(board, effect) = case
+    force_refresh || board_view.board_config.query != board_config.query
+  {
+    True -> new_board_from_config(board_config)
+    False -> update_board_from_config(board_view.board, board_config)
+  }
+
   #(Model(..board_view, board_config:, board:), effect)
 }
 
-fn new_board_from_config(board_config: BoardConfig) {
+fn new_board_from_config(
+  board_config: BoardConfig,
+) -> #(Board(String, Page), Effect(Msg)) {
   #(
     board.new_board(
       group_keys: board_config.statuses,
@@ -62,9 +74,30 @@ fn new_board_from_config(board_config: BoardConfig) {
       done_status: board_config.done_status,
     ),
     effect.from(fn(dispatch) {
+      // TODO: Follow the lead with how we simplified Trill in handling
+      // ToolbarMsg more intelligently. We don't need to fetch from dataview if
+      // the query hasn't actually changed. Gleam == comparisons are
+      // straightforward; maybe this can be applied elsewhere here as well.
       let pages = dataview.pages(board_config.query)
       dispatch(DataviewLoadedPages(pages))
     }),
+  )
+}
+
+fn update_board_from_config(
+  board: Board(String, Page),
+  board_config: BoardConfig,
+) {
+  #(
+    Board(
+      ..board,
+      group_keys: board_config.statuses,
+      group_key_fn: group_key_fn,
+      update_group_key_fn: update_group_key_fn,
+      null_status: board_config.null_status,
+      done_status: board_config.done_status,
+    ),
+    effect.none(),
   )
 }
 
@@ -214,7 +247,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
       #(model, effect)
     }
 
-    BoardViewArchivedAll -> update_board_config(model, model.board_config)
+    BoardViewArchivedAll -> update_board_config(model, model.board_config, True)
 
     UserClickedEditInNeoVim(page) -> {
       let effect =

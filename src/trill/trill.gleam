@@ -295,7 +295,7 @@ pub fn sync_board_view_board_config_from_toolbar(update: Update) -> Update {
     use toolbar <- option.map(model.toolbar)
 
     let #(board_view, effect) =
-      board_view.update_board_config(board_view, toolbar.board_config)
+      board_view.update_board_config(board_view, toolbar.board_config, False)
 
     #(
       Model(..model, board_view: Some(board_view)),
