@@ -148,36 +148,36 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     ToolbarMsg(toolbar.UserSelectedBoardConfig(_board_config) as toolbar_msg) ->
       #(model, effect.none())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
       |> update_board_view_board_config()
 
     ToolbarMsg(toolbar.ToolbarDisplayedModal(modal) as toolbar_msg) ->
       #(Model(..model, modal: Some(modal)), effect.none())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
 
     ToolbarMsg(toolbar.UserUpdatedFilterSearch(_) as toolbar_msg) ->
       #(model, debounce_filter_save())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
       |> update_board_view_board_config()
 
     ToolbarMsg(toolbar.UserClickedClearFilterSearch as toolbar_msg) ->
       #(model, debounce_filter_save())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
       |> update_board_view_board_config()
 
     ToolbarMsg(toolbar.UserClickedToggleFilterTag(_, _) as toolbar_msg) ->
       #(model, debounce_filter_save())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
       |> update_board_view_board_config()
 
     ToolbarMsg(toolbar.UserClickedToggleFilterEnabled as toolbar_msg) ->
       #(model, debounce_filter_save())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
       |> update_board_view_board_config()
 
     ToolbarMsg(toolbar_msg) ->
       #(model, effect.none())
-      |> toolbar_update(toolbar_msg)
+      |> handle_toolbar_msg(toolbar_msg)
 
     BoardViewMsg(board_view_msg) ->
       #(model, effect.none())
@@ -255,7 +255,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-fn toolbar_update(update: Update, toolbar_msg: toolbar.Msg) {
+fn handle_toolbar_msg(
+  update: Update,
+  toolbar_msg: toolbar.Msg,
+) -> #(Model, Effect(Msg)) {
   let #(model, effects) = update
 
   let toolbar_update = option.map(model.toolbar, toolbar.update(_, toolbar_msg))
