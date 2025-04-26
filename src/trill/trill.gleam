@@ -258,17 +258,16 @@ pub fn update(model: Model, msg: Msg) -> Update {
 fn handle_toolbar_msg(update: Update, toolbar_msg: toolbar.Msg) -> Update {
   let #(model, effects) = update
 
-  let toolbar_update = option.map(model.toolbar, toolbar.update(_, toolbar_msg))
-  let toolbar =
-    option.map(toolbar_update, fn(toolbar_update) { toolbar_update.0 })
+  {
+    use toolbar <- option.map(model.toolbar)
 
-  let effect =
-    toolbar_update
-    |> option.map(fn(toolbar_update) { toolbar_update.1 })
-    |> option.unwrap(effect.none())
-    |> effect.map(ToolbarMsg)
+    let #(toolbar, effect) = toolbar.update(toolbar, toolbar_msg)
+    let toolbar = Some(toolbar)
+    let effect = effect.map(effect, ToolbarMsg)
 
-  #(Model(..model, toolbar:), effect.batch([effect, effects]))
+    #(Model(..model, toolbar: toolbar), effect.batch([effect, effects]))
+  }
+  |> option.unwrap(update)
 }
 
 fn debounce_filter_save() -> Effect(Msg) {
@@ -289,18 +288,16 @@ fn handle_board_view_msg(
 ) -> Update {
   let #(model, effects) = update
 
-  let board_view_update =
-    option.map(model.board_view, board_view.update(_, board_view_msg))
-  let board_view =
-    option.map(board_view_update, fn(board_view_update) { board_view_update.0 })
+  {
+    use board_view <- option.map(model.board_view)
 
-  let effect =
-    board_view_update
-    |> option.map(fn(board_view_update) { board_view_update.1 })
-    |> option.unwrap(effect.none())
-    |> effect.map(BoardViewMsg)
+    let #(board_view, effect) = board_view.update(board_view, board_view_msg)
+    let board_view = Some(board_view)
+    let effect = effect.map(effect, BoardViewMsg)
 
-  #(Model(..model, board_view:), effect.batch([effect, effects]))
+    #(Model(..model, board_view:), effect.batch([effect, effects]))
+  }
+  |> option.unwrap(update)
 }
 
 fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) -> Update {
