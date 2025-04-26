@@ -63,25 +63,15 @@ pub fn add_board_config(toolbar: Model, board_config: BoardConfig) -> Model {
   Model(..toolbar, board_configs:)
 }
 
-pub fn select_board_config(toolbar: Model, board_config: BoardConfig) -> Model {
-  Model(
-    ..toolbar,
-    board_config:,
-    board_tags: tags_for_query(board_config.query),
-  )
-}
-
-pub fn update_current_board_config(
+pub fn set_current_board_config(
   toolbar: Model,
-  updated_board_config: BoardConfig,
+  board_config: BoardConfig,
 ) -> Model {
   let board_configs =
     toolbar.board_configs
     |> list.map(fn(bc) {
-      let id = toolbar.board_config.id
-
       case bc {
-        bc if bc.id == id -> updated_board_config
+        bc if bc.id == board_config.id -> board_config
         bc -> bc
       }
     })
@@ -89,8 +79,8 @@ pub fn update_current_board_config(
   Model(
     ..toolbar,
     board_configs:,
-    board_config: updated_board_config,
-    board_tags: tags_for_query(updated_board_config.query),
+    board_config: board_config,
+    board_tags: tags_for_query(board_config.query),
   )
 }
 
@@ -102,12 +92,8 @@ pub fn delete_current_board_config(toolbar: Model) -> Option(Model) {
   case list.first(toolbar.board_configs) {
     Ok(board_config) ->
       Some(
-        Model(
-          ..toolbar,
-          board_config:,
-          board_configs:,
-          board_tags: tags_for_query(board_config.query),
-        ),
+        Model(..toolbar, board_configs:)
+        |> set_current_board_config(board_config),
       )
     Error(Nil) -> None
   }
@@ -146,11 +132,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       case board_config {
         Ok(board_config) -> #(
-          Model(
-            ..model,
-            board_config:,
-            board_tags: tags_for_query(board_config.query),
-          ),
+          set_current_board_config(model, board_config),
           effect.none(),
         )
         Error(_) -> #(model, effect.none())
@@ -211,7 +193,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
       }
 
       #(
-        update_current_board_config(
+        set_current_board_config(
           model,
           BoardConfig(
             ..model.board_config,
@@ -223,7 +205,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
     }
 
     UserClickedClearFilterSearch -> #(
-      update_current_board_config(
+      set_current_board_config(
         model,
         BoardConfig(
           ..model.board_config,
@@ -259,7 +241,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
       }
 
       #(
-        update_current_board_config(
+        set_current_board_config(
           model,
           BoardConfig(
             ..model.board_config,
@@ -271,7 +253,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
     }
 
     UserClickedSelectAllFilterTags -> #(
-      update_current_board_config(
+      set_current_board_config(
         model,
         BoardConfig(
           ..model.board_config,
@@ -282,7 +264,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
     )
 
     UserClickedToggleFilterEnabled -> #(
-      update_current_board_config(
+      set_current_board_config(
         model,
         BoardConfig(
           ..model.board_config,

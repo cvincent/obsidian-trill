@@ -171,7 +171,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
         option.map(model.toolbar, fn(toolbar) {
           toolbar
           |> toolbar.add_board_config(new_board_config)
-          |> toolbar.select_board_config(new_board_config)
+          |> toolbar.set_current_board_config(new_board_config)
         })
 
       #(model, effect.none())
@@ -191,7 +191,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
       )
 
       let toolbar =
-        option.map(model.toolbar, toolbar.update_current_board_config(
+        option.map(model.toolbar, toolbar.set_current_board_config(
           _,
           updated_board_config,
         ))
