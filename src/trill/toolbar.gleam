@@ -308,14 +308,10 @@ fn toolbar_left(model: Model) -> Element(Msg) {
         )
       }),
     ),
-    h.div(
-      [
-        attr.class(
-          "clickable-icon [--icon-size:var(--icon-s)] [--icon-stroke:var(--icon-s-stroke-width)]",
-        ),
-        event.on("click", fn(ev) { Ok(UserClickedBoardMenu(ev)) }),
-      ],
-      [icons.icon("ellipsis-vertical")],
+    toolbar_button(
+      "ellipsis-vertical",
+      "clickable-icon [--icon-size:var(--icon-s)] [--icon-stroke:var(--icon-s-stroke-width)]",
+      UserClickedBoardMenu,
     ),
   ])
 }
@@ -334,13 +330,17 @@ fn toolbar_right(model: Model) -> Element(Msg) {
   }
 
   h.div([attr.class("flex justify-end gap-2")], [
-    // TODO: Extract a function for these buttons
-    h.div(
-      [
-        attr.class(filter_icon_class),
-        event.on("click", fn(ev) { Ok(UserClickedToggleFilter(ev)) }),
-      ],
-      [icons.icon("funnel")],
-    ),
+    toolbar_button("funnel", filter_icon_class, UserClickedToggleFilter),
   ])
+}
+
+fn toolbar_button(
+  icon: String,
+  class: String,
+  msg_constructor: fn(Dynamic) -> a,
+) -> Element(a) {
+  h.div(
+    [attr.class(class), event.on("click", fn(ev) { Ok(msg_constructor(ev)) })],
+    [icons.icon(icon)],
+  )
 }
