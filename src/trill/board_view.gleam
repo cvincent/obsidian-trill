@@ -74,10 +74,6 @@ fn new_board_from_config(
       done_status: board_config.done_status,
     ),
     effect.from(fn(dispatch) {
-      // TODO: Follow the lead with how we simplified Trill in handling
-      // ToolbarMsg more intelligently. We don't need to fetch from dataview if
-      // the query hasn't actually changed. Gleam == comparisons are
-      // straightforward; maybe this can be applied elsewhere here as well.
       let pages = dataview.pages(board_config.query)
       dispatch(DataviewLoadedPages(pages))
     }),
