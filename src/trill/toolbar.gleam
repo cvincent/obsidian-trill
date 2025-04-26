@@ -18,7 +18,6 @@ import lustre/element/html as h
 import lustre/event
 import obsidian_context.{type ObsidianContext}
 import trill/filter_editor
-import util.{guard_element}
 
 pub const user_submitted_new_board_form = "user-submitted-new-board-form"
 
@@ -33,9 +32,15 @@ pub type Model {
     obs: ObsidianContext,
     board_config: BoardConfig,
     board_configs: List(BoardConfig),
-    show_filter: Bool,
+    drawer: Drawer,
     board_tags: List(String),
   )
+}
+
+pub type Drawer {
+  NoDrawer
+  ColumnsEditor
+  FilterEditor
 }
 
 pub fn maybe_toolbar(
@@ -48,7 +53,7 @@ pub fn maybe_toolbar(
         obs:,
         board_configs:,
         board_config:,
-        show_filter: False,
+        drawer: NoDrawer,
         board_tags: tags_for_query(board_config.query),
       ))
     Error(Nil) -> None
@@ -176,7 +181,10 @@ pub fn update(model: Model, msg: Msg) -> Update {
     ToolbarDisplayedModal(_modal) -> #(model, effect.none())
 
     UserClickedToggleFilter(_) -> #(
-      Model(..model, show_filter: !model.show_filter),
+      Model(..model, drawer: case model.drawer {
+        FilterEditor -> NoDrawer
+        _ -> FilterEditor
+      }),
       effect.none(),
     )
 
@@ -280,14 +288,7 @@ pub fn view(model: Model) -> Element(Msg) {
       toolbar_left(model),
       toolbar_right(model),
     ]),
-    guard_element(
-      model.show_filter,
-      filter_editor.view(filter_editor.Model(
-        board_tags: model.board_tags,
-        filter: model.board_config.filter,
-      )),
-    )
-      |> element.map(FilterEditorMsg),
+    drawer(model),
   ])
 }
 
@@ -319,10 +320,11 @@ fn toolbar_right(model: Model) -> Element(Msg) {
 
   let filter_icon_class = case
     card_filter.any(model.board_config.filter),
-    model.show_filter
+    model.drawer
   {
     True, _ -> filter_icon_class <> " [--icon-color:var(--color-orange)]"
-    _, True -> filter_icon_class <> " [--icon-color:var(--icon-color-active)]"
+    _, FilterEditor ->
+      filter_icon_class <> " [--icon-color:var(--icon-color-active)]"
     _, _ -> filter_icon_class
   }
 
@@ -340,4 +342,19 @@ fn toolbar_button(
     [attr.class(class), event.on("click", fn(ev) { Ok(msg_constructor(ev)) })],
     [icons.icon(icon)],
   )
+}
+
+fn drawer(model: Model) -> Element(Msg) {
+  case model.drawer {
+    NoDrawer -> element.none()
+
+    FilterEditor ->
+      filter_editor.view(filter_editor.Model(
+        board_tags: model.board_tags,
+        filter: model.board_config.filter,
+      ))
+      |> element.map(FilterEditorMsg)
+
+    ColumnsEditor -> element.none()
+  }
 }
