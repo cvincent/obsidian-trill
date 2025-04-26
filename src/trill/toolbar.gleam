@@ -53,10 +53,6 @@ pub fn maybe_toolbar(obs: ObsidianContext, board_configs: List(BoardConfig)) {
   }
 }
 
-pub fn current_board_config(toolbar: Model) {
-  toolbar.board_config
-}
-
 pub fn add_board_config(toolbar: Model, board_config: BoardConfig) {
   let board_configs =
     [board_config, ..toolbar.board_configs]
