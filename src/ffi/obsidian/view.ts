@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, Scope, WorkspaceLeaf } from "obsidian";
 
 export class LustreView extends ItemView {
   view_type: string;
@@ -11,29 +11,30 @@ export class LustreView extends ItemView {
     view_type: string,
     get_display_text: (view: LustreView) => string,
     on_open: (view: LustreView) => void,
-    on_close: (view: LustreView) => void
+    on_close: (view: LustreView) => void,
   ) {
-    super(leaf)
-    this.view_type = view_type
-    this.get_display_text = get_display_text
-    this.on_open = on_open
-    this.on_close = on_close
+    super(leaf);
+    this.view_type = view_type;
+    this.get_display_text = get_display_text;
+    this.on_open = on_open;
+    this.on_close = on_close;
+    this.navigation = true;
   }
 
   getViewType(): string {
-    return this.view_type
+    return this.view_type;
   }
 
   getDisplayText(): string {
-    return this.get_display_text(this)
+    return this.get_display_text(this);
   }
 
   async onOpen() {
-    this.on_open(this)
+    this.on_open(this);
   }
 
   async onClose() {
-    this.on_close(this)
+    this.on_close(this);
   }
 }
 
