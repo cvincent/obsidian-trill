@@ -28,11 +28,7 @@ pub fn board_config_decoder() -> decode.Decoder(BoardConfig) {
   use id <- decode.field("id", decode.string)
   use name <- decode.field("name", decode.string)
   use query <- decode.field("query", decode.string)
-  use columns <- decode.optional_field(
-    "columns",
-    list.map(default_statuses, ColumnConfig(status: _, hide_if_empty: False)),
-    decode.list(column_config_decoder()),
-  )
+  use columns <- decode.field("columns", decode.list(column_config_decoder()))
   use filter <- decode.field("filter", card_filter.card_filter_decoder())
   decode.success(BoardConfig(id:, name:, query:, columns:, filter:))
 }
