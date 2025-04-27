@@ -169,7 +169,7 @@ fn validate_board_config(
   }
 
   let query_error = case dataview.pages(board_config.query) {
-    [] -> Error("Query returned no notes.")
+    [] -> Ok(Some("Query returned no notes."))
     pages ->
       Ok(Some(
         "Your query resulted in "
