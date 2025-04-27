@@ -17,6 +17,7 @@ import lustre/element.{type Element}
 import lustre/element/html as h
 import lustre/event
 import obsidian_context.{type ObsidianContext}
+import trill/columns_drawer
 import trill/filter_drawer
 
 pub const user_submitted_new_board_form = "user-submitted-new-board-form"
@@ -117,8 +118,10 @@ pub type Msg {
   UserClickedDeleteBoard
   ToolbarDisplayedModal(Modal)
 
-  UserClickedToggleFilter(ev: Dynamic)
+  UserClickedToggleFilterDrawer(ev: Dynamic)
+  UserClickedToggleColumnsDrawer(ev: Dynamic)
   FilterDrawerMsg(filter_drawer.Msg)
+  ColumnsDrawerMsg(columns_drawer.Msg)
 }
 
 type Update =
@@ -180,7 +183,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     ToolbarDisplayedModal(_modal) -> #(model, effect.none())
 
-    UserClickedToggleFilter(_) -> #(
+    UserClickedToggleFilterDrawer(_) -> #(
       Model(..model, drawer: case model.drawer {
         FilterDrawer -> NoDrawer
         _ -> FilterDrawer
@@ -203,6 +206,31 @@ pub fn update(model: Model, msg: Msg) -> Update {
         set_current_board_config(
           model,
           BoardConfig(..model.board_config, filter: filter_drawer.filter),
+        ),
+        effect,
+      )
+    }
+
+    UserClickedToggleColumnsDrawer(_) -> #(
+      Model(..model, drawer: case model.drawer {
+        ColumnsDrawer -> NoDrawer
+        _ -> ColumnsDrawer
+      }),
+      effect.none(),
+    )
+
+    ColumnsDrawerMsg(columns_drawer_msg) -> {
+      let #(columns_drawer, effect) =
+        columns_drawer.update(
+          columns_drawer.Model(columns: model.board_config.columns),
+          columns_drawer_msg,
+        )
+      let effect = effect.map(effect, ColumnsDrawerMsg)
+
+      #(
+        set_current_board_config(
+          model,
+          BoardConfig(..model.board_config, columns: columns_drawer.columns),
         ),
         effect,
       )
@@ -313,10 +341,16 @@ fn toolbar_left(model: Model) -> Element(Msg) {
 fn toolbar_right(model: Model) -> Element(Msg) {
   h.div([attr.class("flex justify-end gap-2")], [
     toolbar_button(
+      "kanban",
+      model.drawer == ColumnsDrawer,
+      False,
+      UserClickedToggleColumnsDrawer,
+    ),
+    toolbar_button(
       "funnel",
       model.drawer == FilterDrawer,
       card_filter.any(model.board_config.filter),
-      UserClickedToggleFilter,
+      UserClickedToggleFilterDrawer,
     ),
   ])
 }
@@ -335,7 +369,7 @@ fn toolbar_button(
       attr.classes([
         #(class, True),
         #("[--icon-color:var(--color-orange)]", active),
-        #(" [--icon-color:var(--icon-color-active)]", drawer_open),
+        #("[--icon-color:var(--color-base-100)]", drawer_open),
       ]),
       event.on("click", fn(ev) { Ok(msg_constructor(ev)) }),
     ],
@@ -354,6 +388,10 @@ fn drawer(model: Model) -> Element(Msg) {
       ))
       |> element.map(FilterDrawerMsg)
 
-    ColumnsDrawer -> element.none()
+    ColumnsDrawer ->
+      columns_drawer.view(columns_drawer.Model(
+        columns: model.board_config.columns,
+      ))
+      |> element.map(ColumnsDrawerMsg)
   }
 }

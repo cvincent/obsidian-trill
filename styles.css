@@ -206,6 +206,9 @@
   .my-1 {
     margin-block: calc(var(--spacing) * 1);
   }
+  .my-2 {
+    margin-block: calc(var(--spacing) * 2);
+  }
   .mt-4 {
     margin-top: calc(var(--spacing) * 4);
   }
@@ -236,6 +239,9 @@
   .inline {
     display: inline;
   }
+  .h-\[calc\(var\(--toggle-thumb-height\)\+var\(--toggle-border-width\)\*2\)\] {
+    height: calc(var(--toggle-thumb-height) + var(--toggle-border-width) * 2);
+  }
   .h-full {
     height: 100%;
   }
@@ -256,6 +262,9 @@
   }
   .min-w-80 {
     min-width: calc(var(--spacing) * 80);
+  }
+  .basis-1\/2 {
+    flex-basis: calc(1/2 * 100%);
   }
   .basis-1\/3 {
     flex-basis: calc(1/3 * 100%);
@@ -372,11 +381,11 @@
   .filter {
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
+  .\[--icon-color\:var\(--color-base-100\)\] {
+    --icon-color: var(--color-base-100);
+  }
   .\[--icon-color\:var\(--color-orange\)\] {
     --icon-color: var(--color-orange);
-  }
-  .\[--icon-color\:var\(--icon-color-active\)\] {
-    --icon-color: var(--icon-color-active);
   }
   .\[--icon-size\:var\(--icon-s\)\] {
     --icon-size: var(--icon-s);

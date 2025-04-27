@@ -428,17 +428,16 @@ fn event_on(event_name: String, msg: Msg) {
 }
 
 fn statuses_to_show(model: Model) {
-  let null_status_cards =
-    dict.get(model.board.groups, model.board.null_status)
-    |> result.unwrap([])
-
-  case null_status_cards {
-    [_card, ..] -> model.board.group_keys
-    [] ->
-      list.filter(model.board.group_keys, fn(gk) {
-        gk != model.board.null_status
-      })
-  }
+  model.board_config.columns
+  |> list.filter(fn(c) {
+    {
+      use <- bool.guard(!c.hide_if_empty, Ok(True))
+      use group <- result.try(dict.get(model.board.groups, c.status))
+      list.first(group) |> result.replace(True)
+    }
+    |> result.unwrap(False)
+  })
+  |> list.map(fn(c) { c.status })
 }
 
 fn archive_all_link() {
