@@ -8,6 +8,7 @@ pub type BoardConfig {
   BoardConfig(
     id: String,
     name: String,
+    pinned: Bool,
     query: String,
     columns: List(ColumnConfig),
     filter: CardFilter,
@@ -18,6 +19,7 @@ pub fn encode_board_config(board_config: BoardConfig) -> json.Json {
   json.object([
     #("id", json.string(board_config.id)),
     #("name", json.string(board_config.name)),
+    #("pinned", json.bool(board_config.pinned)),
     #("query", json.string(board_config.query)),
     #("columns", json.array(board_config.columns, encode_column_config)),
     #("filter", card_filter.encode_card_filter(board_config.filter)),
@@ -27,10 +29,11 @@ pub fn encode_board_config(board_config: BoardConfig) -> json.Json {
 pub fn board_config_decoder() -> decode.Decoder(BoardConfig) {
   use id <- decode.field("id", decode.string)
   use name <- decode.field("name", decode.string)
+  use pinned <- decode.field("pinned", decode.bool)
   use query <- decode.field("query", decode.string)
   use columns <- decode.field("columns", decode.list(column_config_decoder()))
   use filter <- decode.field("filter", card_filter.card_filter_decoder())
-  decode.success(BoardConfig(id:, name:, query:, columns:, filter:))
+  decode.success(BoardConfig(id:, name:, pinned:, query:, columns:, filter:))
 }
 
 pub type ColumnConfig {
@@ -68,6 +71,7 @@ pub fn new() {
   BoardConfig(
     id: crypto.random_uuid(),
     name: "",
+    pinned: False,
     query: "",
     columns: list.map(default_statuses, ColumnConfig(
       status: _,

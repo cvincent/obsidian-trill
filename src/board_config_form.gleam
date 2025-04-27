@@ -75,6 +75,7 @@ pub type Model {
 pub type Msg {
   ParentSetAttr(attr: String, value: Dynamic)
   UserUpdatedField(field: String, value: String)
+  UserToggledPinned
   UserSubmittedForm
 }
 
@@ -127,6 +128,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         board_config: board_config.update(model.board_config, field, name),
+      ),
+      effect.none(),
+    )
+
+    UserToggledPinned -> #(
+      Model(
+        ..model,
+        board_config: BoardConfig(
+          ..model.board_config,
+          pinned: !model.board_config.pinned,
+        ),
       ),
       effect.none(),
     )
@@ -192,6 +204,26 @@ fn view(model: Model) -> Element(Msg) {
         dict.get(errors, "name"),
         UserUpdatedField("name", _),
       ),
+      h.div([attr.class("setting-item")], [
+        h.div([attr.class("setting-item-info")], [
+          h.div([attr.class("setting-item-name")], [h.text("Pinned")]),
+        ]),
+        h.div([attr.class("setting-item-control")], [
+          h.div(
+            [
+              attr.class("checkbox-container"),
+              attr.classes([#("is-enabled", model.board_config.pinned)]),
+              event.on_click(UserToggledPinned),
+            ],
+            [
+              h.input([
+                attr.type_("checkbox"),
+                attr.checked(model.board_config.pinned),
+              ]),
+            ],
+          ),
+        ]),
+      ]),
       text_field(
         "Query",
         Some(

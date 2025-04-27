@@ -9,6 +9,7 @@ import ffi/obsidian/modal.{type Modal}
 import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/order.{Gt, Lt}
 import gleam/string
 import icons
 import lustre/attribute as attr
@@ -48,7 +49,7 @@ pub fn maybe_toolbar(
   obs: ObsidianContext,
   board_configs: List(BoardConfig),
 ) -> Option(Model) {
-  case list.first(board_configs) {
+  case board_configs |> sort_board_configs() |> list.first() {
     Ok(board_config) ->
       Some(Model(
         obs:,
@@ -321,19 +322,26 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn toolbar_left(model: Model) -> Element(Msg) {
+  let #(pinned, rest) =
+    model.board_configs
+    |> sort_board_configs()
+    |> list.split_while(fn(bc) { bc.pinned })
+
+  let to_option = fn(board_config: BoardConfig) {
+    h.option(
+      [
+        attr.selected(board_config.id == model.board_config.id),
+        attr.value(board_config.id),
+      ],
+      board_config.name,
+    )
+  }
+
   h.div([attr.class("flex justify-start gap-2")], [
-    h.select(
-      [attr.class("dropdown"), event.on_input(UserSelectedBoardConfig)],
-      list.map(model.board_configs, fn(board_config) {
-        h.option(
-          [
-            attr.selected(board_config.id == model.board_config.id),
-            attr.value(board_config.id),
-          ],
-          board_config.name,
-        )
-      }),
-    ),
+    h.select([attr.class("dropdown"), event.on_input(UserSelectedBoardConfig)], [
+      h.optgroup([], list.map(pinned, to_option)),
+      h.optgroup([], list.map(rest, to_option)),
+    ]),
     toolbar_button("ellipsis-vertical", False, False, UserClickedBoardMenu),
   ])
 }
@@ -394,4 +402,15 @@ fn drawer(model: Model) -> Element(Msg) {
       ))
       |> element.map(ColumnsDrawerMsg)
   }
+}
+
+fn sort_board_configs(board_configs: List(BoardConfig)) {
+  list.sort(board_configs, fn(a, b) {
+    case a.pinned, b.pinned {
+      True, True -> string.compare(a.name, b.name)
+      False, False -> string.compare(a.name, b.name)
+      False, True -> Gt
+      True, False -> Lt
+    }
+  })
 }
