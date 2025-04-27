@@ -17,3 +17,20 @@ export function add_tag(
     });
   }
 }
+
+export function remove_tag(
+  obs_ctx: ObsidianContext,
+  path: string,
+  tag: string,
+): void {
+  let vault = obs_ctx.vault as Vault;
+  let file_manager = obs_ctx.file_manager as FileManager;
+  let file = vault.getFileByPath(path);
+
+  if (file) {
+    file_manager.processFrontMatter(file, (frontmatter) => {
+      frontmatter.tags ||= [];
+      frontmatter.tags.remove(tag);
+    });
+  }
+}

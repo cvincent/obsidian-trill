@@ -116,10 +116,9 @@ pub type Msg {
 
   UserStartedDraggingCard(event: Dynamic, card: Card(Page))
   UserStoppedDraggingCard(event: Dynamic)
-  // TODO: See if we can just use Dynamic here, and do it consistently, now that
-  // we know how
   UserDraggedCardOverTarget(event: Dynamic, over: Card(Page))
   UserDraggedCardOverColumn(over: String)
+  UserClickedToggleTag(file: Page, tag: String)
   UserClickedEditInNeoVim(file: Page)
   UserClickedDebug(file: Page)
   UserClickedArchiveAllDone
@@ -225,6 +224,16 @@ pub fn update(model: Model, msg: Msg) -> Update {
         effect.none(),
       )
     }
+
+    UserClickedToggleTag(file, tag) -> #(
+      model,
+      effect.from(fn(dispatch) {
+        case file.tags |> list.contains(tag) {
+          True -> obs.remove_tag(model.obs, file.path, tag)
+          False -> obs.add_tag(model.obs, file.path, tag)
+        }
+      }),
+    )
 
     UserClickedArchiveAllDone -> {
       let effect =
@@ -379,6 +388,9 @@ fn card_view(model: Model, card: Card(Page)) {
       event.on("dragover", fn(ev) { Ok(UserDraggedCardOverTarget(ev, card)) })
   }
 
+  let today = list.contains(page.tags, "today")
+  let this_week = list.contains(page.tags, "this-week")
+
   h.div(
     [
       attr.class("bg-(--background-secondary) mb-2 p-4 rounded-md cursor-grab"),
@@ -400,18 +412,57 @@ fn card_view(model: Model, card: Card(Page)) {
         tags(card),
         task_info(card),
         content_preview(model.card_contents, card),
-        div("flex justify-end", [
-          h.a(
-            [
-              event.on_click(UserClickedEditInNeoVim(page)),
-              attr.class("text-xs"),
-            ],
-            [h.text("nvim")],
-          ),
-          h.a(
-            [event.on_click(UserClickedDebug(page)), attr.class("text-xs ml-1")],
-            [h.text("debug")],
-          ),
+        div("flex justify-between mt-2", [
+          div("flex gap-1", [
+            h.label([attr.class("flex gap-1 items-center cursor-pointer")], [
+              h.div(
+                [
+                  attr.class("checkbox-container"),
+                  attr.classes([#("is-enabled", today)]),
+                ],
+                [
+                  h.input([
+                    attr.type_("checkbox"),
+                    attr.checked(today),
+                    event.on_click(UserClickedToggleTag(page, "today")),
+                  ]),
+                ],
+              ),
+              h.text("today"),
+            ]),
+            h.label([attr.class("flex gap-1 items-center cursor-pointer")], [
+              h.div(
+                [
+                  attr.class("checkbox-container"),
+                  attr.classes([#("is-enabled", this_week)]),
+                ],
+                [
+                  h.input([
+                    attr.type_("checkbox"),
+                    attr.checked(this_week),
+                    event.on_click(UserClickedToggleTag(page, "this-week")),
+                  ]),
+                ],
+              ),
+              h.text("this-week"),
+            ]),
+          ]),
+          div("flex items-center", [
+            h.a(
+              [
+                event.on_click(UserClickedEditInNeoVim(page)),
+                attr.class("text-xs"),
+              ],
+              [h.text("nvim")],
+            ),
+            h.a(
+              [
+                event.on_click(UserClickedDebug(page)),
+                attr.class("text-xs ml-1"),
+              ],
+              [h.text("debug")],
+            ),
+          ]),
         ]),
       ]),
     ],
