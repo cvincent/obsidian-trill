@@ -176,7 +176,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> sync_board_view_board_config_from_toolbar()
+      |> sync_board_view_board_config_from_toolbar(False)
       |> save_board_configs()
       |> close_modal()
     }
@@ -198,7 +198,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> sync_board_view_board_config_from_toolbar()
+      |> sync_board_view_board_config_from_toolbar(False)
       |> save_board_configs()
       |> close_modal()
     }
@@ -209,7 +209,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
       #(model, effect.none())
       |> update_toolbar(toolbar)
-      |> sync_board_view_board_config_from_toolbar()
+      |> sync_board_view_board_config_from_toolbar(False)
       |> save_board_configs()
       |> close_modal()
     }
@@ -222,7 +222,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     ObsidianReportedFileChange ->
       #(model, effect.none())
-      |> sync_board_view_board_config_from_toolbar()
+      |> sync_board_view_board_config_from_toolbar(True)
 
     FilterSaveDebounced ->
       #(model, effect.none())
@@ -246,7 +246,7 @@ fn handle_toolbar_msg(update: Update, toolbar_msg: toolbar.Msg) -> Update {
     |> update_toolbar(toolbar)
     |> util.pipe_if(toolbar_board_config != board_view.board_config, fn(update) {
       #(update.0, effect.batch([debounce_filter_save(), update.1]))
-      |> sync_board_view_board_config_from_toolbar()
+      |> sync_board_view_board_config_from_toolbar(False)
     })
   }
   |> option.flatten()
@@ -287,7 +287,10 @@ fn update_toolbar(update: Update, toolbar: Option(toolbar.Model)) -> Update {
   #(Model(..update.0, toolbar:), update.1)
 }
 
-pub fn sync_board_view_board_config_from_toolbar(update: Update) -> Update {
+pub fn sync_board_view_board_config_from_toolbar(
+  update: Update,
+  force_refresh: Bool,
+) -> Update {
   let #(model, effects) = update
 
   {
@@ -295,7 +298,11 @@ pub fn sync_board_view_board_config_from_toolbar(update: Update) -> Update {
     use toolbar <- option.map(model.toolbar)
 
     let #(board_view, effect) =
-      board_view.update_board_config(board_view, toolbar.board_config, False)
+      board_view.update_board_config(
+        board_view,
+        toolbar.board_config,
+        force_refresh,
+      )
 
     #(
       Model(..model, board_view: Some(board_view)),
