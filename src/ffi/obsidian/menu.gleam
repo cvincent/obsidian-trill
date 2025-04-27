@@ -13,6 +13,9 @@ pub fn add_item(
   callback: fn() -> Nil,
 ) -> Menu
 
+@external(javascript, "src/ffi/obsidian/menu.ts", "add_separator")
+pub fn add_separator(menu: Menu) -> Menu
+
 @external(javascript, "src/ffi/obsidian/menu.ts", "show_at_mouse_event")
 pub fn show_at_mouse_event(menu: Menu, ev: Dynamic) -> Menu
 

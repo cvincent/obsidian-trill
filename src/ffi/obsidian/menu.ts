@@ -15,6 +15,10 @@ export function add_item(
   });
 }
 
+export function add_separator(menu: Menu): void {
+  menu.addSeparator();
+}
+
 export function show_at_mouse_event(menu: Menu, ev: MouseEvent): void {
   menu.showAtMouseEvent(ev);
 }
