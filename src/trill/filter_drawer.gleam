@@ -104,7 +104,7 @@ pub fn view(model: Model) -> Element(Msg) {
     ],
     [
       h.div([attr.class("basis-1/3")], [
-        h.label([attr.class("flex gap-2 content-center mb-4 cursor-pointer")], [
+        h.label([attr.class("flex gap-2 items-center mb-4 cursor-pointer")], [
           h.div(
             [
               attr.class("checkbox-container"),
@@ -157,11 +157,7 @@ pub fn view(model: Model) -> Element(Msg) {
                   }
 
                   h.label(
-                    [
-                      attr.class(
-                        "flex gap-2 content-center my-1 cursor-pointer",
-                      ),
-                    ],
+                    [attr.class("flex gap-2 items-center my-1 cursor-pointer")],
                     [
                       h.div(
                         [
