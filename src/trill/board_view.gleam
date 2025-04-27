@@ -122,7 +122,6 @@ pub type Msg {
   UserClickedEditInNeoVim(file: Page)
   UserClickedDebug(file: Page)
   UserClickedArchiveAllDone
-  BoardViewArchivedAll
 
   ObsidianReadPageContents(contents: Dict(String, String))
 }
@@ -237,7 +236,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     UserClickedArchiveAllDone -> {
       let effect =
-        effect.from(fn(dispatch) {
+        effect.from(fn(_) {
           model.board.groups
           |> dict.get(model.board.done_status)
           |> result.unwrap([])
@@ -245,14 +244,10 @@ pub fn update(model: Model, msg: Msg) -> Update {
             obs.add_tag(model.obs, card.inner.path, "archive")
             card.inner
           })
-
-          dispatch(BoardViewArchivedAll)
         })
 
       #(model, effect)
     }
-
-    BoardViewArchivedAll -> update_board_config(model, model.board_config, True)
 
     UserClickedEditInNeoVim(page) -> {
       let effect =
