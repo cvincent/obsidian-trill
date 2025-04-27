@@ -226,7 +226,7 @@ pub fn update(model: Model, msg: Msg) -> Update {
 
     UserClickedToggleTag(file, tag) -> #(
       model,
-      effect.from(fn(dispatch) {
+      effect.from(fn(_) {
         case file.tags |> list.contains(tag) {
           True -> obs.remove_tag(model.obs, file.path, tag)
           False -> obs.add_tag(model.obs, file.path, tag)
