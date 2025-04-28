@@ -3,6 +3,7 @@ import ffi/plinth_ext/crypto
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
+import gleam/string
 
 pub type BoardConfig {
   BoardConfig(
@@ -10,6 +11,7 @@ pub type BoardConfig {
     name: String,
     pinned: Bool,
     query: String,
+    new_card_tags: List(String),
     columns: List(ColumnConfig),
     filter: CardFilter,
   )
@@ -21,6 +23,7 @@ pub fn encode_board_config(board_config: BoardConfig) -> json.Json {
     #("name", json.string(board_config.name)),
     #("pinned", json.bool(board_config.pinned)),
     #("query", json.string(board_config.query)),
+    #("new_card_tags", json.array(board_config.new_card_tags, json.string)),
     #("columns", json.array(board_config.columns, encode_column_config)),
     #("filter", card_filter.encode_card_filter(board_config.filter)),
   ])
@@ -31,9 +34,18 @@ pub fn board_config_decoder() -> decode.Decoder(BoardConfig) {
   use name <- decode.field("name", decode.string)
   use pinned <- decode.field("pinned", decode.bool)
   use query <- decode.field("query", decode.string)
+  use new_card_tags <- decode.field("new_card_tags", decode.list(decode.string))
   use columns <- decode.field("columns", decode.list(column_config_decoder()))
   use filter <- decode.field("filter", card_filter.card_filter_decoder())
-  decode.success(BoardConfig(id:, name:, pinned:, query:, columns:, filter:))
+  decode.success(BoardConfig(
+    id:,
+    name:,
+    pinned:,
+    query:,
+    new_card_tags:,
+    columns:,
+    filter:,
+  ))
 }
 
 pub type ColumnConfig {
@@ -73,6 +85,7 @@ pub fn new() {
     name: "",
     pinned: False,
     query: "",
+    new_card_tags: [],
     columns: list.map(default_statuses, ColumnConfig(
       status: _,
       hide_if_empty: False,
@@ -89,6 +102,11 @@ pub fn update(
   case field {
     "name" -> BoardConfig(..board_config, name: value)
     "query" -> BoardConfig(..board_config, query: value)
+    "comma_delimited_new_card_tags" ->
+      BoardConfig(
+        ..board_config,
+        new_card_tags: value |> string.split(",") |> list.map(string.trim),
+      )
     _ -> board_config
   }
 }

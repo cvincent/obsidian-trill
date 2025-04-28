@@ -5,6 +5,7 @@ import components
 import confirm_modal
 import context_menu
 import ffi/dataview
+import ffi/jot
 import ffi/obsidian/modal.{type Modal}
 import gleam/dynamic.{type Dynamic}
 import gleam/list
@@ -113,6 +114,7 @@ fn tags_for_query(query: String) -> List(String) {
 pub type Msg {
   UserSelectedBoardConfig(id: String)
   UserClickedBoardMenu(ev: Dynamic)
+  UserClickedNewCard(ev: Dynamic)
   UserClickedNewBoard
   UserClickedDuplicateBoard
   UserClickedEditBoard
@@ -150,6 +152,11 @@ pub fn update(model: Model, msg: Msg) -> Update {
         #("Edit board", "pencil", UserClickedEditBoard),
         #("Delete board", "trash-2", UserClickedDeleteBoard),
       ])
+
+    UserClickedNewCard(_) -> #(
+      model,
+      effect.from(fn(_) { jot.jot(model.board_config.new_card_tags) }),
+    )
 
     UserClickedNewBoard ->
       #(model, effect.none())
@@ -338,10 +345,14 @@ fn toolbar_left(model: Model) -> Element(Msg) {
   }
 
   h.div([attr.class("flex justify-start gap-2")], [
-    h.select([attr.class("dropdown"), event.on_input(UserSelectedBoardConfig)], [
-      h.optgroup([], list.map(pinned, to_option)),
-      h.optgroup([], list.map(rest, to_option)),
-    ]),
+    h.select(
+      [attr.class("dropdown !mr-2"), event.on_input(UserSelectedBoardConfig)],
+      [
+        h.optgroup([], list.map(pinned, to_option)),
+        h.optgroup([], list.map(rest, to_option)),
+      ],
+    ),
+    toolbar_button("square-plus", False, False, UserClickedNewCard),
     toolbar_button("ellipsis-vertical", False, False, UserClickedBoardMenu),
   ])
 }

@@ -8,6 +8,7 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import lustre
 import lustre/attribute as attr
 import lustre/effect.{type Effect}
@@ -232,6 +233,15 @@ fn view(model: Model) -> Element(Msg) {
         model.board_config.query,
         dict.get(errors, "query"),
         UserUpdatedField("query", _),
+      ),
+      text_field(
+        "New Card Tags",
+        Some(
+          "Comma-delimited list of tags to use when creating a new card on this board.",
+        ),
+        string.join(model.board_config.new_card_tags, ", "),
+        dict.get(errors, "comma_delimited_new_card_tags"),
+        UserUpdatedField("comma_delimited_new_card_tags", _),
       ),
       h.div([attr.class("flex justify-end mt-4")], [
         h.button([enabled, event.on_click(UserSubmittedForm)], [

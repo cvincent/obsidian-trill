@@ -148,6 +148,35 @@ pub fn icon(name) {
         ],
       )
 
+    "square-plus" ->
+      svg.svg(
+        [
+          attribute.class(
+            "svg-icon lucide lucide-square-plus-icon lucide-square-plus",
+          ),
+          attribute("stroke-linejoin", "round"),
+          attribute("stroke-linecap", "round"),
+          attribute("stroke-width", "2"),
+          attribute("stroke", "currentColor"),
+          attribute("fill", "none"),
+          attribute("viewBox", "0 0 24 24"),
+          attribute("height", "24"),
+          attribute("width", "24"),
+          attribute("xmlns", "http://www.w3.org/2000/svg"),
+        ],
+        [
+          svg.rect([
+            attribute("rx", "2"),
+            attribute("y", "3"),
+            attribute("x", "3"),
+            attribute("height", "18"),
+            attribute("width", "18"),
+          ]),
+          svg.path([attribute("d", "M8 12h8")]),
+          svg.path([attribute("d", "M12 8v8")]),
+        ],
+      )
+
     "square-x" ->
       svg.svg(
         [
