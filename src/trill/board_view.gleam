@@ -326,15 +326,23 @@ fn maybe_write_new_status(
 }
 
 pub fn view(model: Model) {
+  let last_index = list.length(statuses_to_show(model)) - 1
+
   div(
     "flex h-full px-4",
-    list.map(statuses_to_show(model), fn(status) {
+    list.index_map(statuses_to_show(model), fn(status, i) {
       let cards =
         dict.get(model.board.groups, status)
         |> result.unwrap([])
 
+      let class = case i {
+        0 -> "ml-auto"
+        i if i == last_index -> "mr-auto"
+        _ -> ""
+      }
+
       div(
-        "min-w-80 max-w-80 mr-4 h-full",
+        "min-w-80 max-w-80 mr-4 h-full " <> class,
         list.append(
           [
             div("flex gap-2 mb-2", [
