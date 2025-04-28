@@ -402,7 +402,7 @@ fn drawer(model: Model) -> Element(Msg) {
 
     FilterDrawer ->
       filter_drawer.view(filter_drawer.Model(
-        board_tags: model.board_tags,
+        board_tags: model.board_tags |> list.sort(string.compare),
         filter: model.board_config.filter,
       ))
       |> element.map(FilterDrawerMsg)
